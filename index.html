@@ -442,6 +442,53 @@
   .focus-overlay .fo-mini-panel .mp-ctl{display:flex; gap:4px; justify-content:flex-end}
   .focus-overlay .fo-mini-panel .mp-ctl button{padding:2px 8px; font-size:10px; letter-spacing:1px}
 
+  /* reward burst — positive reinforcement after focus done */
+  .fo-reward{
+    position:fixed; inset:0; z-index:95; pointer-events:none;
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    opacity:0;
+  }
+  .fo-reward.on{animation:reward-fade .9s ease both}
+  .fo-reward .rw-mark{
+    font-size:160px; line-height:1; color:var(--accent);
+    text-shadow:0 0 40px var(--accent), 0 0 80px var(--accent);
+    animation:reward-mark .9s cubic-bezier(.2,.9,.3,1) both;
+  }
+  .fo-reward .rw-word{
+    font-size:14px; letter-spacing:8px; color:var(--accent); text-transform:uppercase;
+    margin-top:18px; opacity:0;
+    animation:reward-word .9s ease both;
+  }
+  .fo-reward .rw-streak{
+    margin-top:8px; font-size:11px; letter-spacing:3px; color:var(--dim); text-transform:uppercase;
+    opacity:0; animation:reward-word .9s ease .15s both;
+  }
+  @keyframes reward-mark{
+    0%{transform:scale(.2); opacity:0}
+    25%{transform:scale(1.25); opacity:1}
+    60%{transform:scale(1); opacity:1}
+    100%{transform:scale(1.05); opacity:0}
+  }
+  @keyframes reward-word{
+    0%{opacity:0; transform:translateY(8px)}
+    25%{opacity:1; transform:none}
+    80%{opacity:1}
+    100%{opacity:0}
+  }
+  @keyframes reward-fade{
+    0%{opacity:0} 10%{opacity:1} 80%{opacity:1} 100%{opacity:0}
+  }
+  /* radiating ring */
+  .fo-reward .rw-ring{
+    position:absolute; width:80px; height:80px; border-radius:50%;
+    border:2px solid var(--accent); opacity:0;
+    animation:reward-ring 1s ease-out both;
+  }
+  @keyframes reward-ring{
+    0%{transform:scale(.4); opacity:.9}
+    100%{transform:scale(8); opacity:0}
+  }
+
   /* ===== Intro micro-animation on load ===== */
   @keyframes intro-task{
     from{opacity:0; transform:translateY(8px)}
@@ -477,7 +524,7 @@
 
   <nav id="nav">
     <button data-tab="today" class="active">[ СЕГОДНЯ ]</button>
-    <button data-tab="week">[ НЕДЕЛЯ ]</button>
+    <button data-tab="week">[ КАЛЕНДАРЬ ]</button>
     <button data-tab="state">[ СОСТОЯНИЕ ]</button>
     <button data-tab="goals">[ ЦЕЛИ ]</button>
     <button data-tab="settings">[ . ]</button>
@@ -618,16 +665,6 @@
       </div>
     </div>
 
-    <div class="card" style="margin-top:18px">
-      <h2>Еженедельные ритуалы</h2>
-      <div id="weekTasks"></div>
-      <div class="add-form">
-        <input id="newWeekTaskText" placeholder="что делаю раз в неделю (обзор, уборка, финансы)..."/>
-        <select id="newWeekTaskGoal"><option value="">без цели</option></select>
-        <button class="primary" id="addWeekTaskBtn">+ ADD</button>
-      </div>
-      <div class="muted small" style="margin-top:8px">Чеклист сбрасывается каждый понедельник. Сами задачи остаются.</div>
-    </div>
   </section>
 
   <!-- ============== STATE ============== -->
@@ -1298,12 +1335,12 @@ document.getElementById("todayTasks").addEventListener("click", e=>{
       save();
       if (t.done){
         popEl(cb); pulseRow("task-"+id); confettiAt(cb); toast();
-        // keep task in pending area for 2s, then slide down to completed list
+        // keep task in pending area briefly, then slide down to completed list
         clearTaskSlide(id);
         taskSlideTimers[id] = setTimeout(()=>{
           delete taskSlideTimers[id];
           flipRender("#todayTasks", ()=>renderToday());
-        }, 2000);
+        }, 500);
         // immediate render (task stays in place visually, marked done)
         renderToday();
         // dim the just-checked row to signal it's leaving soon
@@ -1725,50 +1762,7 @@ function renderWeek(){
     tbl.innerHTML = head + rows;
   }
 
-  // ===== Weekly rituals (existing weekTasks) =====
-  const list = document.getElementById("weekTasks");
-  if (!S.weekTasks.length){
-    list.innerHTML = `<div class="empty">еженедельные ритуалы: уборка, обзор недели, разбор финансов...</div>`;
-  } else {
-    list.innerHTML = S.weekTasks.map(t=>{
-      const done = t.doneWeekKey === wk;
-      const goal = S.goals.find(g=>g.id===t.goalId);
-      return `<div class="task ${done?'done':''}" data-row="wt-${t.id}">
-        <input type="checkbox" data-week="${t.id}" ${done?'checked':''}/>
-        <div class="text">${escapeHtml(t.text)}</div>
-        ${goal?`<span class="goal-tag">→ ${escapeHtml(goal.title)}</span>`:''}
-        <button class="x" data-del-week="${t.id}">×</button>
-      </div>`;
-    }).join("");
-  }
 }
-document.getElementById("addWeekTaskBtn").addEventListener("click", ()=>{
-  const inp = document.getElementById("newWeekTaskText");
-  const sel = document.getElementById("newWeekTaskGoal");
-  const text = inp.value.trim(); if (!text) return;
-  S.weekTasks.push({id:uid(), text, doneWeekKey:null, goalId: sel.value||null});
-  inp.value=""; save(); renderWeek();
-});
-document.getElementById("newWeekTaskText").addEventListener("keydown",e=>{
-  if (e.key==="Enter") document.getElementById("addWeekTaskBtn").click();
-});
-document.getElementById("weekTasks").addEventListener("click", e=>{
-  const cb = e.target.closest("input[type=checkbox][data-week]");
-  if (cb){
-    const t = S.weekTasks.find(x=>x.id===cb.dataset.week);
-    if (t){
-      t.doneWeekKey = cb.checked ? weekKey() : null;
-      save();
-      if (cb.checked){ popEl(cb); pulseRow("wt-"+t.id); confettiAt(cb); toast(); }
-      renderWeek();
-    }
-  }
-  const x = e.target.closest("[data-del-week]");
-  if (x){
-    S.weekTasks = S.weekTasks.filter(t=>t.id!==x.dataset.delWeek);
-    save(); renderWeek();
-  }
-});
 
 /* ============================================================
    CHARTS
@@ -1837,16 +1831,39 @@ function renderCharts(){
     }
   });
 
-  // History
+  // History — unified list of days with any data, clickable to open the day modal
   const histList = document.getElementById("historyList");
-  const recent = Object.keys(S.metricsLog).sort().reverse().slice(0,30);
-  if (!recent.length){ histList.innerHTML = `<div class="empty">пока нет записей</div>`; return; }
+  const dateSet = new Set();
+  Object.keys(S.metricsLog || {}).forEach(d=>dateSet.add(d));
+  S.tasks.forEach(t=>{ if (t.date) dateSet.add(t.date); });
+  S.habits.forEach(h=>{ Object.keys(h.history||{}).forEach(d=>dateSet.add(d)); });
+  S.supps.forEach(s=>{ Object.keys(s.history||{}).forEach(d=>dateSet.add(d)); });
+  const recent = [...dateSet].sort().reverse().slice(0, 60);
+  if (!recent.length){
+    histList.innerHTML = `<div class="empty">пока нет записей — данные появятся после первого закрытого дня</div>`;
+    return;
+  }
   histList.innerHTML = recent.map(d=>{
-    const rec = S.metricsLog[d];
-    const parts = S.metrics.map(m => rec[m.id] != null ? `${m.name.slice(0,3)}:${rec[m.id]}` : null).filter(Boolean).join("  ");
-    return `<div class="task"><div class="text">${fmtDate(d)}</div><div class="muted small">${parts}</div></div>`;
+    const tasks = S.tasks.filter(t=>t.date===d);
+    const tasksDone = tasks.filter(t=>t.done).length;
+    const habitsDone = S.habits.filter(h=>h.history?.[d]).length;
+    const rec = S.metricsLog[d] || {};
+    const metricsCount = S.metrics.filter(m => rec[m.id] != null).length;
+    const st = dayStatus(d);
+    const stColor = {done:"var(--accent)", partial:"var(--yellow)", fail:"var(--warn)"}[st] || "var(--dim)";
+    const stMark = {done:"●", partial:"◐", fail:"○"}[st] || "·";
+    return `<div class="task" data-hist-day="${d}" style="cursor:pointer">
+      <span style="color:${stColor}; font-size:14px; min-width:14px">${stMark}</span>
+      <div class="text">${fmtDate(d)}</div>
+      <div class="muted small" style="white-space:nowrap">задачи ${tasksDone}/${tasks.length}  ·  привычки ${habitsDone}  ·  метрики ${metricsCount}/${S.metrics.length}</div>
+    </div>`;
   }).join("");
 }
+
+document.getElementById("historyList")?.addEventListener("click", e=>{
+  const row = e.target.closest("[data-hist-day]");
+  if (row) openDayModal(row.dataset.histDay);
+});
 
 /* ============================================================
    MINI CALENDAR (внутри WEEK)
@@ -2447,6 +2464,28 @@ function exitFocus(){
   renderToday();
 }
 
+/* Reward animation — positive reinforcement after a task is completed
+   inside Focus Mode. Big check + random victory word + completion count.
+   ~900ms total before advancing to the next task. */
+const REWARD_WORDS = ["да", "плюс", "движение", "хорошо", "ещё", "класс", "так держать", "+1", "точно"];
+function fireReward(){
+  const tt = todaysTasks();
+  const doneCount = tt.filter(t => t.done).length;
+  const total = tt.length;
+  const word = REWARD_WORDS[Math.floor(Math.random()*REWARD_WORDS.length)];
+  const el = document.createElement("div");
+  el.className = "fo-reward on";
+  el.innerHTML = `
+    <div class="rw-ring"></div>
+    <div class="rw-mark">✓</div>
+    <div class="rw-word">${word}</div>
+    <div class="rw-streak">сделано · ${doneCount}/${total}</div>
+  `;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 1000);
+  confettiAt(el);
+}
+
 focusOverlay.addEventListener("click", e=>{
   const done = e.target.closest("[data-fo-done]");
   if (done){
@@ -2454,17 +2493,18 @@ focusOverlay.addEventListener("click", e=>{
     const t = S.tasks.find(x=>x.id===id);
     if (!t) return;
     t.done = true; save();
-    confettiAt(done); toast();
-    // brief flash, then advance to next pending task (or empty state)
+    fireReward();
+    toast();
+    // give the reward a beat, then advance to next pending task (or empty state)
     setTimeout(()=>{
       const next = focusVisibleTask();
       if (!next){
-        // all tasks done — exit focus naturally
+        // all tasks done — exit focus naturally (after the reward shows)
         exitFocus();
         return;
       }
       renderFocusStage();
-    }, 350);
+    }, 850);
     return;
   }
   if (e.target.closest("[data-fo-exit]")){
