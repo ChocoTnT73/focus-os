@@ -577,83 +577,143 @@
   }
 
   /* ============================================================
-     Mobile-first overrides — single column, no horizontal scroll,
-     bigger tap targets, focus mode covers safe-area, touch reorder.
-     Targets iPhone 12/13/14 mini→pro-max widths (~360–430px).
-     Trigger up to 720px so iPad mini in portrait also collapses.
+     Cloud-first loading overlay — hides UI while we pull from cloud.
+  ============================================================ */
+  body.cloud-loading > .app{ visibility:hidden; }
+  body.cloud-loading::before{
+    content:"// SYNC...";
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    z-index:99; color:var(--accent); font:600 14px/1 ui-monospace,Menlo,Consolas,monospace;
+    letter-spacing:6px; background:var(--bg);
+  }
+
+  /* ============================================================
+     Mobile-first — iPhone 12/13/14 layout.
+     Targets ≤720px. The .app gets max-width:420px so all cards
+     share the same width on phones; no element "sticks out".
+     Tap targets ≥44px, safe-area aware, word-wrap everywhere.
   ============================================================ */
   html, body{ overflow-x:hidden; max-width:100vw; }
   *, *::before, *::after{ min-width:0; }
 
   @media (max-width:720px){
-    .app{ padding:14px 12px; }
-    header{ flex-wrap:wrap; gap:10px; }
-    header .row{ flex-wrap:wrap; }
+    body{
+      padding-top:env(safe-area-inset-top, 0);
+      padding-bottom:env(safe-area-inset-bottom, 0);
+    }
+    .app{
+      max-width:420px; margin:0 auto; padding:16px 16px 32px 16px;
+      box-sizing:border-box;
+    }
 
-    /* Tabs scroll horizontally instead of wrapping/breaking */
+    /* Header — wraps, no overflow */
+    header{ flex-wrap:wrap; gap:12px; align-items:flex-start; }
+    header > div:first-child{ flex:1 1 100%; }
+    header .row{ flex-wrap:wrap; gap:8px; width:100%; }
+
+    /* Tabs scroll horizontally if too many */
     nav#nav{
       display:flex !important; flex-wrap:nowrap; overflow-x:auto;
       gap:6px; -webkit-overflow-scrolling:touch;
-      scrollbar-width:none;
+      scrollbar-width:none; padding-bottom:4px;
     }
     nav#nav::-webkit-scrollbar{ display:none; }
-    nav#nav button{ flex:none; padding:8px 10px; font-size:12px; }
+    nav#nav button{ flex:none; padding:10px 12px; font-size:12px; }
 
+    /* Grid → single column with consistent gaps. Every card is full width. */
     .grid{ gap:14px; }
     .grid.cols-2, .grid.cols-3{ grid-template-columns:1fr !important; }
-    .card{ padding:14px 12px; }
+    .card{
+      padding:14px; box-sizing:border-box;
+      width:100%; max-width:100%; min-width:0;
+    }
     .card h2{ font-size:12px; flex-wrap:wrap; gap:8px; }
 
-    /* Bigger touch targets */
-    button, input, select, textarea{ min-height:38px; font-size:14px; }
-    .row.wrap{ flex-wrap:wrap; }
-    .row > input, .row > select{ flex:1 1 100%; min-width:0; }
+    /* Tap targets: 44px minimum (Apple HIG) */
+    button, input, select, textarea{
+      min-height:44px; font-size:14px;
+      box-sizing:border-box;
+    }
+    /* Tiny inline buttons (×, drag handle, etc.) keep their compact size */
+    .task .x, .reorder-btns button, button.x{ min-height:0; }
+
+    .row{ flex-wrap:wrap; gap:8px; }
+    .row > input, .row > select, .row > textarea{ flex:1 1 100%; min-width:0; }
     .row > button{ flex:0 0 auto; }
 
-    /* Pomodoro digits — shrink so they fit narrow screen */
-    .timer-display, #timerDisplay{
-      font-size:48px !important; letter-spacing:2px !important;
+    /* Word-wrap everywhere, no compressed sideways text */
+    .card h2, .card p, .card div, .task .text, .auth-card, label{
+      overflow-wrap:anywhere; word-break:break-word;
     }
 
-    /* Tasks: drop drag handle on touch, show up/down buttons instead.
-       Buttons are only injected on mobile via JS-rendered .reorder-btns. */
+    /* Pomodoro digits — fit width comfortably */
+    .timer-display, #timerDisplay{
+      font-size:56px !important; letter-spacing:2px !important;
+    }
+
+    /* Tasks: drop drag handle on touch, show up/down buttons.
+       Each task is one row, wraps if long. Min 44px tall via .task padding. */
     .drag-handle{ display:none !important; }
     .reorder-btns{
       display:flex !important; flex-direction:column; gap:2px; flex:none;
     }
     .reorder-btns button{
-      width:30px; height:22px; padding:0; font-size:12px; line-height:1;
-      min-height:0; border:1px solid var(--line); background:#000; color:var(--dim);
+      width:32px; height:22px; padding:0; font-size:12px; line-height:1;
+      border:1px solid var(--line); background:#000; color:var(--dim);
     }
     .reorder-btns button:disabled{ opacity:.3; }
     .reorder-btns button:hover:not(:disabled){ color:var(--accent); border-color:var(--accent); }
 
-    .task{ gap:8px; }
-    .task .text{ overflow-wrap:anywhere; word-break:break-word; }
+    .task{ gap:8px; padding:10px 8px; flex-wrap:wrap; }
+    .task .text{ flex:1 1 auto; min-width:0; }
+    .task .x{ width:32px; height:32px; }
 
-    /* Focus overlay — full screen, safe-area aware, no scroll */
+    /* Sliders — easier to grab on touch */
+    input[type="range"]{ height:32px; }
+
+    /* Focus overlay — full viewport, safe-area aware, no scroll */
     .focus-overlay{
       padding:18px;
       padding-top:calc(env(safe-area-inset-top, 0px) + 18px);
       padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 18px);
       height:100dvh; min-height:100dvh; overflow:hidden;
+      align-items:center; justify-content:center;
     }
-    .focus-overlay .fo-text{ font-size:24px; margin-bottom:24px; }
-    .focus-overlay .fo-done{ padding:14px 22px; font-size:13px; letter-spacing:2px; }
+    .focus-overlay .fo-stage{ width:100%; max-width:360px; }
+    .focus-overlay .fo-text{ font-size:24px; margin-bottom:24px; line-height:1.4; }
+    .focus-overlay .fo-done{
+      padding:14px 22px; font-size:13px; letter-spacing:2px;
+      width:100%; max-width:280px;
+    }
     .focus-overlay .fo-mini{ top:14px; right:14px; }
-    .focus-overlay .fo-mini-toggle{ width:32px; height:32px; }
+    .focus-overlay .fo-mini-toggle{ width:36px; height:36px; }
+    .focus-overlay .fo-exit{ font-size:11px; }
 
-    /* Day modal — full width, scroll inside */
-    .modal{ width:96vw !important; max-height:90dvh; overflow:auto; padding:16px !important; }
+    /* Day modal & auth modal — full width, scrollable */
+    .modal{
+      width:96vw !important; max-width:96vw !important;
+      max-height:90dvh; overflow:auto; padding:16px !important;
+      box-sizing:border-box;
+    }
+    .auth-card{
+      width:96vw; max-width:96vw; padding:20px 16px;
+      box-sizing:border-box;
+    }
 
     /* Footer — wrap */
-    .footer{ flex-direction:column; align-items:flex-start; }
+    .footer{
+      flex-direction:column; align-items:flex-start; gap:6px;
+      padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 8px);
+    }
 
-    /* Auth modal */
-    .auth-card{ padding:20px 16px; }
+    /* Header buttons compact but legible */
+    .cloud-btn, .danger{ padding:8px 10px; font-size:11px; min-height:36px; }
 
-    /* Header buttons not too cramped */
-    .cloud-btn, .danger{ padding:6px 8px; font-size:11px; }
+    /* Habits / supps inputs row */
+    select{ background-position:right 8px center; padding-right:24px; }
+
+    /* Loading overlay smaller text on mobile */
+    body.cloud-loading::before{ font-size:13px; letter-spacing:4px; }
   }
 
   /* Hide reorder buttons on desktop (they're added unconditionally by JS) */
@@ -944,10 +1004,14 @@
     </div>
 
     <div id="authSignedIn" style="display:none">
-      <div style="color:var(--accent); font-size:13px; margin-bottom:6px">вошли как <span id="authEmailShown"></span></div>
+      <div style="color:var(--accent); font-size:13px; margin-bottom:4px">вошли как <span id="authEmailShown"></span></div>
       <div class="muted small" style="margin-bottom:14px">данные синхронизируются автоматически</div>
+
+      <label for="authUsername">ник</label>
+      <input type="text" id="authUsername" placeholder="как тебя называть" maxlength="32" autocomplete="off" />
+      <div class="muted small" style="margin:-6px 0 14px 0">отображается в шапке. синхронизируется со всеми устройствами.</div>
+
       <div class="auth-actions">
-        <button id="authPullNow">подтянуть с облака</button>
         <button id="authSignOut">выйти</button>
       </div>
       <div class="auth-msg" id="authMsg2"></div>
@@ -1042,6 +1106,7 @@ function emptyState(){
     timer: { work: 25, short: 5, long: 15, cyclesBeforeLong: 4 },
     lastSeen: null,
     focusMode: false,
+    profile: { username: "" },
   };
 }
 
@@ -1100,6 +1165,9 @@ function migrate(st){
   if (typeof st.timer.short !== "number") st.timer.short = 5;
   if (typeof st.timer.long !== "number") st.timer.long = 15;
   if (typeof st.timer.cyclesBeforeLong !== "number") st.timer.cyclesBeforeLong = 4;
+  // profile (username for cloud-synced display name)
+  if (!st.profile || typeof st.profile !== "object") st.profile = { username: "" };
+  if (typeof st.profile.username !== "string") st.profile.username = "";
   return st;
 }
 
@@ -2768,19 +2836,18 @@ document.getElementById("mpPause")?.addEventListener("click", pauseTimer);
 document.getElementById("mpReset")?.addEventListener("click", resetTimer);
 
 /* ============================================================
-   CLOUD SYNC — Supabase
-   Model: cloud is the source of truth when signed in.
-   - Every save() schedules a debounced push (~400ms).
-   - On sign-in we pull from cloud:
-     - If cloud has a row: replace local entirely with cloud state
-       UNLESS local is strictly newer (_updatedAt) — then push local up.
-       Reasoning: if user worked offline on this device, we don't want
-       to silently drop their work; only the very first push wins.
-     - If cloud has no row yet: push local up as the initial seed.
-   - Realtime: any change to the user's row from another device replaces
-     local state if its _updatedAt differs from ours.
-   - Manual "force pull" always overwrites local with cloud.
-   - All operations log to console with the [cloud] prefix.
+   CLOUD SYNC — Supabase   (cloud-first model)
+   - Supabase = source of truth. localStorage = cache only.
+   - On boot: if there's a session, pull cloud BEFORE rendering UI.
+   - lastSyncStamp tracks the last cloud-confirmed _updatedAt:
+     • cloudPushSoon refuses to push when S._updatedAt <= lastSyncStamp
+       (prevents stale pre-login data from overwriting cloud)
+     • after a successful push, lastSyncStamp = pushed stamp
+     • after a successful pull, lastSyncStamp = cloud _updatedAt
+   - Realtime applies updates whose _updatedAt is strictly newer than
+     local; own echoes are filtered by lastPushedUpdatedAt.
+   - No manual "pull" button — sync is fully automatic.
+   - Logging at every step (search "[cloud]" or "[save]" in console).
 ============================================================ */
 let sb = null;
 let cloudUser = null;
@@ -2788,14 +2855,21 @@ let cloudPushTimer = null;
 let cloudPushInFlight = false;
 let cloudPushPending = false;
 let cloudChannel = null;
-let lastPushedUpdatedAt = 0; // echo detection for realtime
+let lastPushedUpdatedAt = 0;   // echo filter for realtime
+let lastSyncStamp = 0;         // _updatedAt of the last cloud-confirmed state
+let cloudInitDone = false;     // becomes true after first init pass (auto-pushes allowed)
+let cloudLoadingResolve = null;
+const cloudLoadingPromise = new Promise(r => { cloudLoadingResolve = r; });
 
 const CLOUD_DEBOUNCE_MS = 400;
 
 function cloudConfigured(){ return !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase); }
 function cloudReady(){ return !!sb && !!cloudUser; }
 
-function shortName(email){
+function displayName(){
+  const u = (S.profile && S.profile.username) ? S.profile.username.trim() : "";
+  if (u) return u;
+  const email = cloudUser?.email || "";
   if (!email) return "";
   const at = email.indexOf("@");
   return at > 0 ? email.slice(0, at) : email;
@@ -2828,23 +2902,27 @@ function renderAll(){
 /* Replace every key of S with the cloud-provided state, normalised through
    emptyState() defaults and migrate(). Then save to localStorage cache. */
 function applyCloudState(remoteState, remoteUpdatedAt){
+  const before = JSON.stringify({tasks:S.tasks?.length, habits:S.habits?.length,
+                                  goals:S.goals?.length, _updatedAt:S._updatedAt});
   console.log("[cloud] applying remote state, _updatedAt=", remoteUpdatedAt,
-              "keys:", Object.keys(remoteState||{}));
+              "keys:", Object.keys(remoteState||{}), "before:", before);
   const merged = migrate(Object.assign(emptyState(), remoteState || {}));
-  // mutate S in place (other modules may have closed over the reference)
   Object.keys(S).forEach(k => { delete S[k]; });
   Object.assign(S, merged);
   S._updatedAt = remoteUpdatedAt;
+  lastSyncStamp = remoteUpdatedAt;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
   renderAll();
+  console.log("[cloud] applied. now: tasks=", S.tasks?.length, "habits=", S.habits?.length,
+              "goals=", S.goals?.length);
 }
 
 async function cloudInit(){
   if (!cloudConfigured()){
     console.log("[cloud] not configured — local-only");
     setCloudStatus("offline", "локально");
-    const cb = document.getElementById("cloudBtn");
-    if (cb) cb.title = "облачная синхронизация выключена — впиши SUPABASE_URL/SUPABASE_ANON_KEY";
+    cloudInitDone = true;
+    cloudLoadingResolve();
     return;
   }
   console.log("[cloud] init, url=", SUPABASE_URL);
@@ -2855,39 +2933,42 @@ async function cloudInit(){
   } catch (e){
     console.warn("[cloud] supabase init failed:", e);
     setCloudStatus("error", "ошибка");
+    cloudInitDone = true;
+    cloudLoadingResolve();
     return;
   }
 
-  // Hook auth state changes BEFORE getSession so nothing is lost.
+  // Auth state listener — handles magic-link sign-in and sign-out.
   sb.auth.onAuthStateChange(async (event, session) => {
     console.log("[cloud] auth event:", event, "user:", session?.user?.email || null);
     if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session){
       const wasNewLogin = !cloudUser;
       cloudUser = session.user;
       if (wasNewLogin){
-        setCloudStatus("syncing", shortName(cloudUser.email));
-        await cloudPull(false);
-        setCloudStatus("online", shortName(cloudUser.email));
+        setCloudStatus("syncing", displayName());
+        await cloudPull();
+        setCloudStatus("online", displayName());
         cloudSubscribe();
         hideAuthOverlay();
-        toast("вошли · синхронизация ок");
+        toast("вошли · данные подгружены");
       }
     } else if (event === "SIGNED_OUT"){
       cloudUser = null;
       if (cloudChannel){ sb.removeChannel(cloudChannel); cloudChannel = null; }
+      lastSyncStamp = 0;
       setCloudStatus("offline", "войти");
     }
   });
 
-  // Read current session (handles magic-link redirect via detectSessionInUrl).
+  // detectSessionInUrl auto-applies hash fragment from magic-link redirect.
   try {
     const { data } = await sb.auth.getSession();
     if (data?.session){
       cloudUser = data.session.user;
       console.log("[cloud] existing session:", cloudUser.email);
-      setCloudStatus("syncing", shortName(cloudUser.email));
-      await cloudPull(false);
-      setCloudStatus("online", shortName(cloudUser.email));
+      setCloudStatus("syncing", displayName());
+      await cloudPull();
+      setCloudStatus("online", displayName());
       cloudSubscribe();
     } else {
       console.log("[cloud] no session");
@@ -2897,14 +2978,14 @@ async function cloudInit(){
     console.warn("[cloud] getSession failed:", e);
     setCloudStatus("offline", "войти");
   }
+  cloudInitDone = true;
+  cloudLoadingResolve();
 }
 
-/* Pull from cloud.
-   force=true  → always overwrite local with cloud (used by manual pull button)
-   force=false → cloud wins unless local is strictly newer */
-async function cloudPull(force){
+/* Cloud always wins on pull. Cache replaced with cloud state. */
+async function cloudPull(){
   if (!cloudReady()){ console.log("[cloud] pull skipped, not ready"); return; }
-  console.log("[cloud] pulling, force=", !!force);
+  console.log("[cloud] pulling for user:", cloudUser.email);
   try {
     const { data, error } = await sb
       .from("user_data")
@@ -2914,60 +2995,71 @@ async function cloudPull(force){
     if (error) throw error;
 
     if (!data){
-      console.log("[cloud] no row yet — pushing local as seed");
-      await cloudPushNow();
+      // First-ever sign-in: cloud is empty, seed from local. This is the
+      // ONLY situation where local data goes up without a prior cloud
+      // version to compare against.
+      console.log("[cloud] no row yet — seeding cloud from local");
+      await cloudPushNow(true /*seed*/);
       return;
     }
     const cloudState   = data.state || {};
     const cloudUpdated = cloudState._updatedAt || new Date(data.updated_at).getTime();
-    const localUpdated = S._updatedAt || 0;
-    console.log("[cloud] compare cloud._updatedAt=", cloudUpdated, "local._updatedAt=", localUpdated);
-
-    if (force){
-      console.log("[cloud] force pull — replacing local with cloud");
-      applyCloudState(cloudState, cloudUpdated);
-      return;
-    }
-    if (cloudUpdated >= localUpdated){
-      console.log("[cloud] cloud is newer or equal — replacing local");
-      applyCloudState(cloudState, cloudUpdated);
-    } else {
-      console.log("[cloud] local is newer — pushing up");
-      await cloudPushNow();
-    }
+    console.log("[cloud] pull ok, cloud._updatedAt=", cloudUpdated,
+                "local._updatedAt=", S._updatedAt || 0,
+                "→ cloud wins (always)");
+    applyCloudState(cloudState, cloudUpdated);
   } catch (e){
     console.warn("[cloud] pull failed:", e);
     setCloudStatus("error", "ошибка");
   }
 }
 
+/* Schedule a debounced push. No-op unless we have something genuinely new. */
 function cloudPushSoon(){
   if (!cloudReady()) return;
+  if (!cloudInitDone){
+    console.log("[cloud] push deferred — init not done yet");
+    return;
+  }
+  if ((S._updatedAt || 0) <= lastSyncStamp){
+    console.log("[cloud] push skipped — local not newer than lastSyncStamp",
+                S._updatedAt, "<=", lastSyncStamp);
+    return;
+  }
   if (cloudPushTimer) clearTimeout(cloudPushTimer);
-  cloudPushTimer = setTimeout(cloudPushNow, CLOUD_DEBOUNCE_MS);
+  cloudPushTimer = setTimeout(()=>cloudPushNow(false), CLOUD_DEBOUNCE_MS);
 }
 
-async function cloudPushNow(){
+/* Actually upload local state.
+   seed=true bypasses lastSyncStamp / cloudInitDone (used to seed an empty
+   cloud row at first sign-in). */
+async function cloudPushNow(seed){
   if (!cloudReady()){ console.log("[cloud] push skipped, not ready"); return; }
+  if (!seed && (S._updatedAt || 0) <= lastSyncStamp){
+    console.log("[cloud] push skipped (not newer)", S._updatedAt, "<=", lastSyncStamp);
+    return;
+  }
   if (cloudPushInFlight){ cloudPushPending = true; return; }
   cloudPushInFlight = true;
-  setCloudStatus("syncing", shortName(cloudUser.email));
+  setCloudStatus("syncing", displayName());
   const stamp = Date.now();
-  S._updatedAt = stamp;
-  lastPushedUpdatedAt = stamp;
-  // refresh cache so an immediate reload doesn't undo the version bump
+  if ((S._updatedAt || 0) < stamp) S._updatedAt = stamp; // monotone
+  lastPushedUpdatedAt = S._updatedAt;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
   const size = JSON.stringify(S).length;
-  console.log("[cloud] pushing _updatedAt=", stamp, "size=", size, "bytes");
+  console.log("[cloud] pushing _updatedAt=", S._updatedAt, "size=", size, "bytes",
+              "tasks=", S.tasks?.length, "habits=", S.habits?.length,
+              "username=", S.profile?.username || "(none)");
   try {
     const { error } = await sb.from("user_data").upsert({
       user_id: cloudUser.id,
       state: S,
-      updated_at: new Date(stamp).toISOString()
+      updated_at: new Date(S._updatedAt).toISOString()
     }, { onConflict: "user_id" });
     if (error) throw error;
-    console.log("[cloud] push ok");
-    setCloudStatus("online", shortName(cloudUser.email));
+    lastSyncStamp = S._updatedAt;
+    console.log("[cloud] push ok, lastSyncStamp =", lastSyncStamp);
+    setCloudStatus("online", displayName());
   } catch (e){
     console.warn("[cloud] push failed:", e);
     setCloudStatus("error", "ошибка");
@@ -2991,16 +3083,18 @@ function cloudSubscribe(){
         const state = payload.new?.state;
         if (!state){ console.log("[cloud] realtime: empty payload, skip"); return; }
         const cloudUpdated = state._updatedAt || (payload.new.updated_at ? new Date(payload.new.updated_at).getTime() : 0);
-        // skip echoes from our own write
         if (cloudUpdated && cloudUpdated === lastPushedUpdatedAt){
           console.log("[cloud] realtime: own echo, skip");
           return;
         }
         const localUpdated = S._updatedAt || 0;
-        console.log("[cloud] realtime msg cloud._updatedAt=", cloudUpdated, "local._updatedAt=", localUpdated);
+        console.log("[cloud] realtime msg cloud._updatedAt=", cloudUpdated,
+                    "local._updatedAt=", localUpdated);
         if (cloudUpdated > localUpdated){
           applyCloudState(state, cloudUpdated);
           toast("обновлено с другого устройства");
+        } else {
+          console.log("[cloud] realtime: cloud not newer, skip");
         }
       })
     .subscribe(status => {
@@ -3018,12 +3112,17 @@ function showAuthOverlay(){
     authSignedOut.style.display = "none";
     authSignedIn.style.display  = "block";
     document.getElementById("authEmailShown").textContent = cloudUser.email || "—";
+    const uInput = document.getElementById("authUsername");
+    if (uInput) uInput.value = (S.profile && S.profile.username) || "";
   } else {
     authSignedOut.style.display = "block";
     authSignedIn.style.display  = "none";
   }
   authOverlay.classList.add("on");
-  setTimeout(()=>document.getElementById("authEmail")?.focus(), 50);
+  setTimeout(()=>{
+    if (cloudUser) document.getElementById("authUsername")?.focus();
+    else document.getElementById("authEmail")?.focus();
+  }, 50);
 }
 function hideAuthOverlay(){ authOverlay.classList.remove("on"); }
 
@@ -3078,10 +3177,18 @@ document.getElementById("authEmail")?.addEventListener("keydown", e => {
   if (e.key === "Enter") document.getElementById("authSendLink").click();
 });
 
-document.getElementById("authPullNow")?.addEventListener("click", async () => {
-  console.log("[cloud] manual force pull requested");
-  await cloudPull(true);
-  toast("подтянуто из облака");
+/* Username — debounced sync; saving triggers cloudPushSoon via save(). */
+let usernameDebounce = null;
+document.getElementById("authUsername")?.addEventListener("input", (e) => {
+  const v = (e.target.value || "").trim().slice(0, 32);
+  S.profile = S.profile || { username: "" };
+  if (S.profile.username === v) return;
+  S.profile.username = v;
+  if (usernameDebounce) clearTimeout(usernameDebounce);
+  usernameDebounce = setTimeout(() => {
+    save();
+    if (cloudReady()) setCloudStatus("online", displayName());
+  }, 250);
 });
 
 document.getElementById("authSignOut")?.addEventListener("click", async () => {
@@ -3104,17 +3211,51 @@ if ("serviceWorker" in navigator && location.protocol !== "file:"){
 
 /* ============================================================
    INIT
+   Cloud-first boot: when a session token is in localStorage we
+   wait for cloudPull to finish before rendering the UI, so the
+   user never sees a flash of stale local data.
 ============================================================ */
 // reset legacy focusMode flag at start — focus is a transient UI state, not
 // something we want to persist across reloads (avoids stuck overlays).
-S.focusMode = false; save();
+S.focusMode = false;
+localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
 
 setPhase("work", 1);
-renderToday();
-setInterval(renderToday, 60000); // обновлять время в шапке раз в минуту
 
-// kick off cloud sync after first paint so it never blocks UI
-setTimeout(cloudInit, 50);
+/* Detect a likely Supabase session synchronously by scanning localStorage
+   for the auth token. If present, gate the UI behind cloudInit so cloud
+   data lands first. Otherwise render immediately from cache. */
+function hasLikelySession(){
+  try {
+    for (let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      if (k && k.startsWith("sb-") && k.endsWith("-auth-token")){
+        return true;
+      }
+    }
+  } catch (_) {}
+  return false;
+}
+
+(async function boot(){
+  const gated = cloudConfigured() && hasLikelySession();
+  if (gated){
+    console.log("[boot] session token detected — waiting for cloud pull before render");
+    document.body.classList.add("cloud-loading");
+    // Race against a hard timeout so a slow network never traps the UI.
+    cloudInit();
+    await Promise.race([
+      cloudLoadingPromise,
+      new Promise(r => setTimeout(r, 4000))
+    ]);
+    document.body.classList.remove("cloud-loading");
+  } else {
+    // No session — local cache is fine to render immediately.
+    setTimeout(cloudInit, 50);
+  }
+  renderToday();
+  setInterval(renderToday, 60000);
+})();
 </script>
 </body>
 </html>
