@@ -52,10 +52,13 @@
   @keyframes blink{50%{opacity:0}}
   .meta{color:var(--dim); font-size:12px}
 
-  nav{display:flex; gap:0; border-bottom:1px solid var(--line); margin-bottom:24px; overflow-x:auto}
+  nav{display:flex; gap:0; border-bottom:1px solid var(--line); margin-bottom:24px;
+      overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none}
+  nav::-webkit-scrollbar{ display:none }
   nav button{
     background:transparent; border:none; border-bottom:2px solid transparent;
     color:var(--dim); padding:10px 14px; letter-spacing:1px;
+    white-space:nowrap; flex:0 0 auto;
   }
   nav button:hover{color:var(--fg)}
   nav button.active{color:var(--accent); border-bottom-color:var(--accent)}
@@ -71,6 +74,8 @@
     border:1px solid var(--line);
     background:var(--bg-2);
     padding:16px;
+    box-sizing:border-box;
+    width:100%;
   }
   .card h2{
     margin:0 0 12px 0; font-size:13px; letter-spacing:2px; color:var(--dim);
@@ -606,21 +611,31 @@
       box-sizing:border-box;
     }
 
+    /* Every direct block in the app shares the same content width.
+       This kills any "one card wider than another" inconsistency. */
+    .app > *,
+    .tab > *{
+      width:100%; max-width:100%; box-sizing:border-box;
+    }
+
     /* Header — wraps, no overflow */
     header{ flex-wrap:wrap; gap:12px; align-items:flex-start; }
     header > div:first-child{ flex:1 1 100%; }
     header .row{ flex-wrap:wrap; gap:8px; width:100%; }
 
-    /* Tabs scroll horizontally if too many */
+    /* Tabs — scroll horizontally if too many; brackets stay glued to label */
     nav#nav{
-      display:flex !important; flex-wrap:nowrap; overflow-x:auto;
-      gap:6px; -webkit-overflow-scrolling:touch;
+      display:flex !important; flex-wrap:nowrap !important; overflow-x:auto;
+      gap:4px; -webkit-overflow-scrolling:touch;
       scrollbar-width:none; padding-bottom:4px;
     }
     nav#nav::-webkit-scrollbar{ display:none; }
-    nav#nav button{ flex:none; padding:10px 12px; font-size:12px; }
+    nav#nav button{
+      flex:0 0 auto; white-space:nowrap;
+      padding:10px 10px; font-size:12px; letter-spacing:1px;
+    }
 
-    /* Grid → single column with consistent gaps. Every card is full width. */
+    /* Grid → single column. Each card occupies full track width. */
     .grid{ gap:14px; }
     .grid.cols-2, .grid.cols-3{ grid-template-columns:1fr !important; }
     .card{
@@ -629,17 +644,39 @@
     }
     .card h2{ font-size:12px; flex-wrap:wrap; gap:8px; }
 
+    /* Streak / week-goal banners — same width as cards */
+    .streak-bar, .week-goal-banner{
+      width:100%; box-sizing:border-box; margin-bottom:14px;
+    }
+
     /* Tap targets: 44px minimum (Apple HIG) */
     button, input, select, textarea{
       min-height:44px; font-size:14px;
       box-sizing:border-box;
     }
-    /* Tiny inline buttons (×, drag handle, etc.) keep their compact size */
-    .task .x, .reorder-btns button, button.x{ min-height:0; }
+    /* Tiny inline buttons (×, drag handle, ▲▼) keep their compact size */
+    .task .x, .reorder-btns button, button.x,
+    .pomo-phase .ph, .focus-toggle{ min-height:0; }
 
     .row{ flex-wrap:wrap; gap:8px; }
     .row > input, .row > select, .row > textarea{ flex:1 1 100%; min-width:0; }
     .row > button{ flex:0 0 auto; }
+
+    /* Add-forms (новая задача / новая привычка / новый supps) — wrap.
+       Each input on its own row, button compact. */
+    .add-form{ flex-wrap:wrap; gap:8px; }
+    .add-form > input,
+    .add-form > select{
+      flex:1 1 100%; min-width:0; max-width:100% !important;
+    }
+    .add-form > input[type="number"]{ flex:0 0 80px; }
+    .add-form > button{ flex:0 0 auto; padding:0 18px; }
+
+    /* State sliders — vertical layout for tight screens */
+    .slider-row{ grid-template-columns:1fr 30px; }
+    .slider-row label{ grid-column:1 / -1; }
+    .slider-row input[type="range"]{ grid-column:1; }
+    .slider-row .val{ grid-column:2; }
 
     /* Word-wrap everywhere, no compressed sideways text */
     .card h2, .card p, .card div, .task .text, .auth-card, label{
@@ -1008,8 +1045,11 @@
       <div class="muted small" style="margin-bottom:14px">данные синхронизируются автоматически</div>
 
       <label for="authUsername">ник</label>
-      <input type="text" id="authUsername" placeholder="как тебя называть" maxlength="32" autocomplete="off" />
-      <div class="muted small" style="margin:-6px 0 14px 0">отображается в шапке. синхронизируется со всеми устройствами.</div>
+      <div class="row" style="gap:6px; align-items:stretch">
+        <input type="text" id="authUsername" placeholder="как тебя называть" maxlength="32" autocomplete="off" style="flex:1 1 auto" />
+        <button id="authUsernameSave" class="primary" type="button" style="flex:0 0 auto">сохранить</button>
+      </div>
+      <div class="muted small" style="margin:6px 0 14px 0">отображается в шапке. синхронизируется со всеми устройствами.</div>
 
       <div class="auth-actions">
         <button id="authSignOut">выйти</button>
@@ -3177,18 +3217,25 @@ document.getElementById("authEmail")?.addEventListener("keydown", e => {
   if (e.key === "Enter") document.getElementById("authSendLink").click();
 });
 
-/* Username — debounced sync; saving triggers cloudPushSoon via save(). */
-let usernameDebounce = null;
-document.getElementById("authUsername")?.addEventListener("input", (e) => {
-  const v = (e.target.value || "").trim().slice(0, 32);
+/* Username — explicit "сохранить" button; pushes through normal save() → cloud. */
+function saveUsernameFromInput(){
+  const inp = document.getElementById("authUsername");
+  if (!inp) return;
+  const v = (inp.value || "").trim().slice(0, 32);
   S.profile = S.profile || { username: "" };
-  if (S.profile.username === v) return;
+  if (S.profile.username === v){
+    toast("ник без изменений");
+    return;
+  }
+  console.log("[save] username:", JSON.stringify(S.profile.username), "→", JSON.stringify(v));
   S.profile.username = v;
-  if (usernameDebounce) clearTimeout(usernameDebounce);
-  usernameDebounce = setTimeout(() => {
-    save();
-    if (cloudReady()) setCloudStatus("online", displayName());
-  }, 250);
+  save();                                  // bumps _updatedAt + schedules cloud push
+  if (cloudReady()) setCloudStatus("online", displayName());
+  toast(v ? "ник сохранён: " + v : "ник очищен");
+}
+document.getElementById("authUsernameSave")?.addEventListener("click", saveUsernameFromInput);
+document.getElementById("authUsername")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter"){ e.preventDefault(); saveUsernameFromInput(); }
 });
 
 document.getElementById("authSignOut")?.addEventListener("click", async () => {
