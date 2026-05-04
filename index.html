@@ -904,8 +904,8 @@ const STORAGE_KEY = "focus_os_v1";
    Fill these in to enable cross-device sync. Both values are PUBLIC and safe
    to commit — Postgres Row Level Security policies guard the actual data so
    each user can only read/write their own row. Leave blank for offline-only. */
-const SUPABASE_URL      = "";
-const SUPABASE_ANON_KEY = "";
+const SUPABASE_URL      = "https://bgxdkojcbyrjhemfayvi.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJneGRrb2pjYnlyamhlbWZheXZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MDM5MjksImV4cCI6MjA5MzQ3OTkyOX0.AYHfFG0Clah7kqqEm3Na7Qm3EDWEqPBMEUFc1huEP7c";
 
 const TASK_LIMIT = 5;
 const GOAL_LIMIT = 5;
@@ -2862,6 +2862,9 @@ document.getElementById("authClose")?.addEventListener("click", hideAuthOverlay)
 document.getElementById("authSkip")?.addEventListener("click", hideAuthOverlay);
 authOverlay.addEventListener("click", e => {
   if (e.target === authOverlay) hideAuthOverlay();
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && authOverlay.classList.contains("on")) hideAuthOverlay();
 });
 
 document.getElementById("authSendLink").addEventListener("click", async () => {
