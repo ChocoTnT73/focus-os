@@ -2,9 +2,19 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>FOCUS_OS</title>
+<!-- PWA -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0a0a0a" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="FOCUS_OS" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --bg:#0a0a0a;
@@ -442,6 +452,63 @@
   .focus-overlay .fo-mini-panel .mp-ctl{display:flex; gap:4px; justify-content:flex-end}
   .focus-overlay .fo-mini-panel .mp-ctl button{padding:2px 8px; font-size:10px; letter-spacing:1px}
 
+  /* ===== Cloud sync button + status ===== */
+  .cloud-btn{
+    background:transparent; border:1px solid var(--line); color:var(--dim);
+    padding:6px 10px; font-size:11px; letter-spacing:2px; text-transform:uppercase;
+    display:flex; align-items:center; gap:6px;
+  }
+  .cloud-btn:hover{color:var(--accent); border-color:var(--accent)}
+  .cloud-btn.online{color:var(--accent); border-color:var(--accent)}
+  .cloud-btn.syncing{color:var(--yellow); border-color:var(--yellow)}
+  .cloud-btn.offline{color:var(--dim); border-color:var(--line)}
+  .cloud-dot{
+    width:6px; height:6px; border-radius:50%; background:var(--dim);
+    display:inline-block; flex:none;
+  }
+  .cloud-btn.online .cloud-dot{background:var(--accent); box-shadow:0 0 6px var(--accent)}
+  .cloud-btn.syncing .cloud-dot{background:var(--yellow); animation:pulse-dot 1s ease-in-out infinite}
+  .cloud-btn.error .cloud-dot{background:var(--warn)}
+  @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* ===== Auth overlay ===== */
+  .auth-overlay{
+    position:fixed; inset:0; z-index:80; background:rgba(10,10,10,0.94);
+    display:none; align-items:center; justify-content:center; padding:20px;
+  }
+  .auth-overlay.on{display:flex}
+  .auth-card{
+    width:100%; max-width:420px; border:1px solid var(--line); background:#000;
+    padding:28px 24px;
+  }
+  .auth-card h2{margin:0 0 4px}
+  .auth-card .auth-sub{color:var(--dim); font-size:11px; letter-spacing:2px; text-transform:uppercase; margin-bottom:18px}
+  .auth-card label{display:block; color:var(--dim); font-size:10px; letter-spacing:2px; text-transform:uppercase; margin-bottom:6px}
+  .auth-card input[type=email]{
+    width:100%; padding:10px 12px; font-size:14px; background:#000;
+    border:1px solid var(--line); color:var(--fg); margin-bottom:12px;
+  }
+  .auth-card input[type=email]:focus{outline:none; border-color:var(--accent)}
+  .auth-card .auth-actions{display:flex; gap:10px; margin-top:6px}
+  .auth-card .auth-actions .primary{flex:1}
+  .auth-card .auth-msg{
+    margin-top:14px; padding:10px 12px; border:1px solid var(--line);
+    color:var(--accent); font-size:11px; letter-spacing:1px;
+    display:none;
+  }
+  .auth-card .auth-msg.on{display:block}
+  .auth-card .auth-msg.error{color:var(--warn); border-color:var(--warn)}
+  .auth-card .auth-skip{
+    display:block; margin-top:18px; text-align:center;
+    color:var(--dim); font-size:10px; letter-spacing:2px; text-transform:uppercase;
+    background:transparent; border:none; width:100%;
+  }
+  .auth-card .auth-skip:hover{color:var(--accent)}
+  .auth-card .auth-info{
+    color:var(--dim); font-size:11px; line-height:1.5; margin-top:14px;
+    padding-top:12px; border-top:1px dashed var(--line);
+  }
+
   /* reward burst — positive reinforcement after focus done */
   .fo-reward{
     position:fixed; inset:0; z-index:95; pointer-events:none;
@@ -518,6 +585,9 @@
       <div class="meta" id="metaLine">— загрузка —</div>
     </div>
     <div class="row">
+      <button id="cloudBtn" class="cloud-btn" title="облачная синхронизация">
+        <span class="cloud-dot" id="cloudDot"></span><span id="cloudLabel">войти</span>
+      </button>
       <button id="antiIllusionBtn" class="danger">// АНТИ-ИЛЛЮЗИЯ</button>
     </div>
   </header>
@@ -743,7 +813,7 @@
   </section>
 
   <div class="footer">
-    <div>FOCUS_OS v1 · локально · без аккаунтов</div>
+    <div>FOCUS_OS v1 · локально + облако (опционально)</div>
     <div id="footerStats"></div>
   </div>
 </div>
@@ -766,6 +836,38 @@
     <h3 id="dayModalTitle">—</h3>
     <div class="modal-date" id="dayModalDate">—</div>
     <div id="dayModalBody"></div>
+  </div>
+</div>
+
+<!-- ============== AUTH OVERLAY ============== -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card">
+    <h2>облако</h2>
+    <div class="auth-sub">синхронизация между устройствами</div>
+
+    <div id="authSignedOut">
+      <label for="authEmail">email</label>
+      <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email" inputmode="email" />
+      <div class="auth-actions">
+        <button class="primary" id="authSendLink">получить ссылку</button>
+      </div>
+      <div class="auth-msg" id="authMsg"></div>
+      <div class="auth-info">
+        Magic link: пришлём письмо с ссылкой, кликаешь — входишь. Без паролей. Данные привязываются к email и доступны со всех устройств.
+      </div>
+      <button class="auth-skip" id="authSkip">— продолжить без аккаунта —</button>
+    </div>
+
+    <div id="authSignedIn" style="display:none">
+      <div style="color:var(--accent); font-size:13px; margin-bottom:6px">вошли как <span id="authEmailShown"></span></div>
+      <div class="muted small" style="margin-bottom:14px">данные синхронизируются автоматически</div>
+      <div class="auth-actions">
+        <button id="authPullNow">подтянуть с облака</button>
+        <button id="authSignOut">выйти</button>
+      </div>
+      <div class="auth-msg" id="authMsg2"></div>
+      <button class="auth-skip" id="authClose">закрыть</button>
+    </div>
   </div>
 </div>
 
@@ -797,6 +899,13 @@
 ========================================================= */
 
 const STORAGE_KEY = "focus_os_v1";
+
+/* ===== Cloud sync config (Supabase) =====
+   Fill these in to enable cross-device sync. Both values are PUBLIC and safe
+   to commit — Postgres Row Level Security policies guard the actual data so
+   each user can only read/write their own row. Leave blank for offline-only. */
+const SUPABASE_URL      = "";
+const SUPABASE_ANON_KEY = "";
 
 const TASK_LIMIT = 5;
 const GOAL_LIMIT = 5;
@@ -910,7 +1019,9 @@ function migrate(st){
 }
 
 function save(){
+  S._updatedAt = Date.now();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
+  if (typeof cloudPushSoon === "function") cloudPushSoon();
 }
 
 /* ---------- utils ---------- */
@@ -2534,6 +2645,283 @@ document.getElementById("mpPause")?.addEventListener("click", pauseTimer);
 document.getElementById("mpReset")?.addEventListener("click", resetTimer);
 
 /* ============================================================
+   CLOUD SYNC — Supabase (optional)
+   Strategy:
+   - Every save() bumps S._updatedAt and schedules a debounced push.
+   - On login we pull the cloud row; whichever side has the newer
+     _updatedAt wins (single user, last-write-wins is acceptable).
+   - Realtime subscription receives updates from other devices and
+     replaces local state if cloud is newer.
+   - If keys aren't configured the whole module is a no-op.
+============================================================ */
+let sb = null;
+let cloudUser = null;
+let cloudPushTimer = null;
+let cloudPushInFlight = false;
+let cloudPushPending = false;
+
+function cloudConfigured(){ return !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase); }
+function cloudReady(){ return !!sb && !!cloudUser; }
+
+function shortName(email){
+  if (!email) return "";
+  const at = email.indexOf("@");
+  return at > 0 ? email.slice(0, at) : email;
+}
+
+function setCloudStatus(state, label){
+  const btn = document.getElementById("cloudBtn");
+  const lbl = document.getElementById("cloudLabel");
+  if (!btn) return;
+  btn.classList.remove("online","syncing","offline","error");
+  btn.classList.add(state);
+  if (label !== undefined && lbl) lbl.textContent = label;
+}
+
+/* Re-render everything visible after a cloud pull replaces state. */
+function renderAll(){
+  try {
+    renderToday();
+    if (typeof renderHabits === "function") renderHabits();
+    if (typeof renderSupps === "function") renderSupps();
+    if (typeof renderMetrics === "function") renderMetrics();
+    if (typeof renderGoals === "function") renderGoals();
+    if (typeof renderWeek === "function") renderWeek();
+    if (typeof renderMiniCal === "function") renderMiniCal();
+    if (typeof renderStreakBar === "function") renderStreakBar();
+    if (typeof renderCharts === "function") renderCharts();
+  } catch (e) { console.warn("renderAll partial fail:", e); }
+}
+
+async function cloudInit(){
+  if (!cloudConfigured()){
+    setCloudStatus("offline", "локально");
+    const cb = document.getElementById("cloudBtn");
+    if (cb) cb.title = "облачная синхронизация выключена — впиши SUPABASE_URL/SUPABASE_ANON_KEY";
+    return;
+  }
+  try {
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+  } catch (e){
+    console.warn("supabase init failed:", e);
+    setCloudStatus("error", "ошибка");
+    return;
+  }
+  // Read current session (handles magic-link redirect via detectSessionInUrl)
+  try {
+    const { data } = await sb.auth.getSession();
+    if (data?.session){
+      cloudUser = data.session.user;
+      setCloudStatus("syncing", shortName(cloudUser.email));
+      await cloudPull();
+      setCloudStatus("online", shortName(cloudUser.email));
+      cloudSubscribe();
+    } else {
+      setCloudStatus("offline", "войти");
+    }
+  } catch (e){
+    console.warn("getSession failed:", e);
+    setCloudStatus("offline", "войти");
+  }
+
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session && !cloudUser){
+      cloudUser = session.user;
+      setCloudStatus("syncing", shortName(cloudUser.email));
+      await cloudPull();
+      setCloudStatus("online", shortName(cloudUser.email));
+      cloudSubscribe();
+      hideAuthOverlay();
+      toast("вошли · синхронизация ок");
+    } else if (event === "SIGNED_OUT"){
+      cloudUser = null;
+      setCloudStatus("offline", "войти");
+    }
+  });
+}
+
+async function cloudPull(){
+  if (!cloudReady()) return;
+  try {
+    const { data, error } = await sb
+      .from("user_data")
+      .select("state, updated_at")
+      .eq("user_id", cloudUser.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (data && data.state){
+      const cloudUpdated = data.state._updatedAt || new Date(data.updated_at).getTime();
+      const localUpdated = S._updatedAt || 0;
+      if (cloudUpdated > localUpdated){
+        // overwrite local with cloud
+        Object.keys(S).forEach(k => { if (!(k in data.state)) delete S[k]; });
+        Object.assign(S, data.state);
+        S._updatedAt = cloudUpdated;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
+        renderAll();
+      } else if (localUpdated > cloudUpdated){
+        // local newer — push it up
+        await cloudPushNow();
+      }
+    } else {
+      // no row yet — create one with current local state
+      await cloudPushNow();
+    }
+  } catch (e){
+    console.warn("cloudPull failed:", e);
+    setCloudStatus("error", "ошибка");
+  }
+}
+
+function cloudPushSoon(){
+  if (!cloudReady()) return;
+  if (cloudPushTimer) clearTimeout(cloudPushTimer);
+  cloudPushTimer = setTimeout(cloudPushNow, 1200);
+}
+
+async function cloudPushNow(){
+  if (!cloudReady()) return;
+  if (cloudPushInFlight){ cloudPushPending = true; return; }
+  cloudPushInFlight = true;
+  setCloudStatus("syncing", shortName(cloudUser.email));
+  try {
+    const { error } = await sb.from("user_data").upsert({
+      user_id: cloudUser.id,
+      state: S,
+      updated_at: new Date().toISOString()
+    });
+    if (error) throw error;
+    setCloudStatus("online", shortName(cloudUser.email));
+  } catch (e){
+    console.warn("cloudPush failed:", e);
+    setCloudStatus("error", "ошибка");
+  } finally {
+    cloudPushInFlight = false;
+    if (cloudPushPending){
+      cloudPushPending = false;
+      cloudPushSoon();
+    }
+  }
+}
+
+let cloudChannel = null;
+function cloudSubscribe(){
+  if (!cloudReady()) return;
+  if (cloudChannel) sb.removeChannel(cloudChannel);
+  cloudChannel = sb.channel("focus_os_user_data")
+    .on("postgres_changes",
+      { event: "*", schema: "public", table: "user_data", filter: `user_id=eq.${cloudUser.id}` },
+      (payload) => {
+        const state = payload.new?.state;
+        if (!state) return;
+        const cloudUpdated = state._updatedAt || (payload.new.updated_at ? new Date(payload.new.updated_at).getTime() : 0);
+        const localUpdated = S._updatedAt || 0;
+        // ignore echoes of our own writes (within 500ms grace)
+        if (cloudUpdated > localUpdated + 500){
+          Object.keys(S).forEach(k => { if (!(k in state)) delete S[k]; });
+          Object.assign(S, state);
+          S._updatedAt = cloudUpdated;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
+          renderAll();
+          toast("обновлено с другого устройства");
+        }
+      })
+    .subscribe();
+}
+
+/* ----- Auth UI ----- */
+const authOverlay  = document.getElementById("authOverlay");
+const authSignedIn = document.getElementById("authSignedIn");
+const authSignedOut= document.getElementById("authSignedOut");
+
+function showAuthOverlay(){
+  if (cloudUser){
+    authSignedOut.style.display = "none";
+    authSignedIn.style.display  = "block";
+    document.getElementById("authEmailShown").textContent = cloudUser.email || "—";
+  } else {
+    authSignedOut.style.display = "block";
+    authSignedIn.style.display  = "none";
+  }
+  authOverlay.classList.add("on");
+  setTimeout(()=>document.getElementById("authEmail")?.focus(), 50);
+}
+function hideAuthOverlay(){ authOverlay.classList.remove("on"); }
+
+document.getElementById("cloudBtn").addEventListener("click", () => {
+  if (!cloudConfigured()){
+    toast("облако не настроено");
+    return;
+  }
+  showAuthOverlay();
+});
+
+document.getElementById("authClose")?.addEventListener("click", hideAuthOverlay);
+document.getElementById("authSkip")?.addEventListener("click", hideAuthOverlay);
+authOverlay.addEventListener("click", e => {
+  if (e.target === authOverlay) hideAuthOverlay();
+});
+
+document.getElementById("authSendLink").addEventListener("click", async () => {
+  const email = (document.getElementById("authEmail").value || "").trim();
+  const msg = document.getElementById("authMsg");
+  msg.classList.remove("error");
+  if (!email || !email.includes("@")){
+    msg.textContent = "введи email";
+    msg.classList.add("on","error");
+    return;
+  }
+  if (!cloudConfigured()){
+    msg.textContent = "облако не настроено";
+    msg.classList.add("on","error");
+    return;
+  }
+  msg.textContent = "отправляю...";
+  msg.classList.remove("error"); msg.classList.add("on");
+  try {
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.href.split("#")[0].split("?")[0] }
+    });
+    if (error) throw error;
+    msg.textContent = "ссылка отправлена. проверь почту (и спам).";
+    msg.classList.remove("error");
+  } catch (e){
+    msg.textContent = "ошибка: " + (e.message || e);
+    msg.classList.add("error");
+  }
+});
+
+document.getElementById("authEmail")?.addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("authSendLink").click();
+});
+
+document.getElementById("authPullNow")?.addEventListener("click", async () => {
+  await cloudPull();
+  toast("подтянуто");
+});
+
+document.getElementById("authSignOut")?.addEventListener("click", async () => {
+  if (!sb) return;
+  await sb.auth.signOut();
+  cloudUser = null;
+  setCloudStatus("offline", "войти");
+  hideAuthOverlay();
+  toast("вышли");
+});
+
+/* ============================================================
+   PWA — service worker
+============================================================ */
+if ("serviceWorker" in navigator && location.protocol !== "file:"){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(e => console.warn("sw register failed:", e));
+  });
+}
+
+/* ============================================================
    INIT
 ============================================================ */
 // reset legacy focusMode flag at start — focus is a transient UI state, not
@@ -2543,6 +2931,9 @@ S.focusMode = false; save();
 setPhase("work", 1);
 renderToday();
 setInterval(renderToday, 60000); // обновлять время в шапке раз в минуту
+
+// kick off cloud sync after first paint so it never blocks UI
+setTimeout(cloudInit, 50);
 </script>
 </body>
 </html>
