@@ -159,13 +159,6 @@
   .week-goal-banner.empty{border-color:var(--line); background:#000}
   .week-goal-banner.empty .title{color:var(--dim); font-weight:400; font-style:italic}
 
-  /* ===== Tabs inside section ===== */
-  .subnav{display:flex; gap:0; border-bottom:1px solid var(--line); margin-bottom:14px}
-  .subnav button{background:transparent; border:none; border-bottom:2px solid transparent;
-    color:var(--dim); padding:8px 12px; letter-spacing:1px; font-size:12px}
-  .subnav button:hover{color:var(--fg)}
-  .subnav button.active{color:var(--accent); border-bottom-color:var(--accent)}
-
   /* ===== Weekly habit progress ===== */
   .habit .wprog{font-size:11px; color:var(--yellow); min-width:36px; text-align:right; letter-spacing:1px}
   .habit .wprog.done{color:var(--accent)}
@@ -289,14 +282,6 @@
   }
   .scale-pop{animation:row-scale .35s ease-out}
 
-  /* ===== Reorder buttons ===== */
-  .task .ord{display:flex; flex-direction:column; gap:0; margin-right:2px}
-  .task .ord button{
-    background:transparent; border:none; color:var(--dim); padding:0 4px;
-    font-size:10px; line-height:1; cursor:pointer;
-  }
-  .task .ord button:hover{color:var(--accent)}
-
   /* ===== Mini calendar in WEEK ===== */
   .minical{display:grid; grid-template-columns:repeat(7,1fr); gap:3px}
   .minical .dow{color:var(--dim); font-size:9px; letter-spacing:1px; text-align:center; padding:2px 0}
@@ -329,17 +314,6 @@
   .focus-toggle .dot{width:6px; height:6px; border-radius:50%; background:var(--dim)}
   .focus-toggle.on .dot{background:var(--accent); box-shadow:0 0 6px var(--accent)}
 
-  .focus-one{
-    border:1px solid var(--accent); padding:32px 24px; text-align:center;
-    background:linear-gradient(180deg,#0a1a08,#000);
-    animation:fadein .35s ease-out;
-  }
-  .focus-one .lbl{color:var(--dim); font-size:10px; letter-spacing:3px; text-transform:uppercase; margin-bottom:14px}
-  .focus-one .text{font-size:22px; color:var(--fg); margin-bottom:20px; word-break:break-word}
-  .focus-one .goal-tag{font-size:11px; color:var(--yellow); border:1px solid var(--yellow); padding:2px 8px; margin-left:8px}
-  .focus-one .actions{display:flex; gap:8px; justify-content:center; flex-wrap:wrap}
-  .focus-one button.big{padding:10px 22px; letter-spacing:2px}
-
   /* ===== Empty / day-done state ===== */
   .day-done{
     border:1px solid var(--line); padding:60px 24px; text-align:center;
@@ -354,9 +328,142 @@
     background:transparent; border:none; color:var(--dim); padding:0 4px; font-size:10px; cursor:pointer;
   }
   .slider-row label .ed:hover{color:var(--accent)}
+
+  /* ===== Pomodoro phases ===== */
+  .pomo-phase{
+    display:flex; justify-content:center; gap:14px; align-items:center;
+    color:var(--dim); font-size:11px; letter-spacing:2px; text-transform:uppercase;
+    padding:0 0 6px;
+  }
+  .pomo-phase .ph{padding:2px 8px; border:1px solid var(--line); color:var(--dim)}
+  .pomo-phase .ph.active{color:var(--accent); border-color:var(--accent); background:rgba(124,255,107,0.06)}
+  .pomo-phase .cycles{color:var(--dim); font-size:10px; letter-spacing:1px}
+  .timer-display.work{color:var(--accent)}
+  .timer-display.short{color:var(--yellow)}
+  .timer-display.long{color:#9bc7ff}
+
+  /* ===== Tasks: sort + slide animations ===== */
+  .task{transition:transform .35s cubic-bezier(.2,.7,.3,1), opacity .25s ease, background .2s ease}
+  .task.fading{opacity:0.55}
+  .task .drag-handle{
+    color:var(--dim); cursor:grab; user-select:none; padding:0 4px; line-height:1;
+    font-size:14px; letter-spacing:-2px;
+  }
+  .task .drag-handle:hover{color:var(--accent)}
+  .task.dragging{opacity:0.4; background:#0a1a08}
+  .task.drag-over-top{box-shadow:inset 0 2px 0 var(--accent)}
+  .task.drag-over-bot{box-shadow:inset 0 -2px 0 var(--accent)}
+  .task-divider{
+    border-top:1px dashed var(--line); margin:6px 0 0;
+    padding:6px 0 0; color:var(--dim); font-size:10px; letter-spacing:2px; text-transform:uppercase;
+  }
+  .day-done-actions{margin-top:18px}
+  .day-done-actions .undo{
+    background:transparent; border:1px solid var(--line); color:var(--dim);
+    padding:4px 10px; font-size:10px; letter-spacing:2px; text-transform:uppercase;
+  }
+  .day-done-actions .undo:hover{color:var(--accent); border-color:var(--accent)}
+
+  /* ===== Habits unified ===== */
+  .hab-section{padding:6px 0}
+  .hab-section-head{
+    display:flex; align-items:center; gap:8px; cursor:default;
+    color:var(--dim); font-size:10px; letter-spacing:2px; text-transform:uppercase;
+    padding:6px 0; margin-top:4px;
+    background:transparent; border:none; width:100%; text-align:left; font-family:inherit;
+  }
+  .hab-section-head.toggle{cursor:pointer}
+  .hab-section-head.toggle:hover{color:var(--accent)}
+  .hab-section-head .chev{transition:transform .2s ease; display:inline-block; color:var(--dim)}
+  .hab-section-head.open .chev{transform:rotate(90deg); color:var(--accent)}
+  .hab-section-body{overflow:hidden; max-height:0; transition:max-height .25s ease}
+  .hab-section-body.open{max-height:2000px}
+
+  /* ===== Focus Mode overlay ===== */
+  body.focus-active > .app{visibility:hidden}
+  .focus-overlay{
+    position:fixed; inset:0; z-index:90; background:var(--bg);
+    display:none; align-items:center; justify-content:center;
+    padding:24px;
+  }
+  .focus-overlay.on{display:flex}
+  .focus-overlay .fo-stage{
+    width:100%; max-width:760px; text-align:center;
+    opacity:0; transition:opacity .6s ease;
+  }
+  .focus-overlay.ready .fo-stage{opacity:1}
+  .focus-overlay .fo-text{
+    font-size:32px; line-height:1.35; color:var(--fg); word-break:break-word;
+    margin-bottom:36px; letter-spacing:0.5px;
+  }
+  .focus-overlay .fo-goal{
+    display:inline-block; font-size:12px; color:var(--yellow); border:1px solid var(--yellow);
+    padding:2px 8px; margin-left:10px; vertical-align:middle;
+  }
+  .focus-overlay .fo-actions{display:flex; gap:14px; justify-content:center; flex-wrap:wrap}
+  .focus-overlay .fo-done{
+    background:#000; border:1px solid var(--accent); color:var(--accent);
+    padding:14px 28px; font-size:14px; letter-spacing:3px; text-transform:uppercase;
+  }
+  .focus-overlay .fo-done:hover{background:var(--accent); color:#000}
+  .focus-overlay .fo-exit{
+    background:transparent; border:none; color:#444; padding:10px 14px;
+    font-size:11px; letter-spacing:2px; text-transform:uppercase;
+  }
+  .focus-overlay .fo-exit:hover{color:var(--warn)}
+  .focus-overlay .fo-empty{color:var(--dim); font-size:14px; letter-spacing:2px; text-transform:uppercase}
+  .focus-overlay .fo-counter{
+    position:absolute; top:18px; left:50%; transform:translateX(-50%);
+    color:var(--dim); font-size:10px; letter-spacing:3px; text-transform:uppercase;
+  }
+
+  /* mini pomodoro inside focus */
+  .focus-overlay .fo-mini{
+    position:absolute; top:18px; right:18px;
+    display:flex; flex-direction:column; align-items:flex-end; gap:6px;
+  }
+  .focus-overlay .fo-mini-toggle{
+    width:18px; height:18px; border:1px solid #2a2a2a; background:transparent;
+    color:#333; padding:0; cursor:pointer; font-size:10px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .focus-overlay .fo-mini-toggle:hover{color:var(--dim); border-color:var(--dim)}
+  .focus-overlay .fo-mini-panel{
+    display:none; border:1px solid var(--line); background:#000;
+    padding:8px 10px; min-width:140px; text-align:right;
+  }
+  .focus-overlay .fo-mini-panel.open{display:block}
+  .focus-overlay .fo-mini-panel .mp-time{
+    font-size:18px; letter-spacing:2px; color:var(--accent); margin-bottom:4px;
+  }
+  .focus-overlay .fo-mini-panel.short .mp-time{color:var(--yellow)}
+  .focus-overlay .fo-mini-panel.long .mp-time{color:#9bc7ff}
+  .focus-overlay .fo-mini-panel .mp-ph{font-size:9px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; margin-bottom:6px}
+  .focus-overlay .fo-mini-panel .mp-ctl{display:flex; gap:4px; justify-content:flex-end}
+  .focus-overlay .fo-mini-panel .mp-ctl button{padding:2px 8px; font-size:10px; letter-spacing:1px}
+
+  /* ===== Intro micro-animation on load ===== */
+  @keyframes intro-task{
+    from{opacity:0; transform:translateY(8px)}
+    to{opacity:1; transform:none}
+  }
+  @keyframes intro-rest{from{opacity:0} to{opacity:1}}
+  body.intro-loading .app > header,
+  body.intro-loading .app > nav,
+  body.intro-loading #tab-today > .streak-bar,
+  body.intro-loading #tab-today > #weekGoalBanner,
+  body.intro-loading #tab-today > .grid.cols-2:first-of-type > .card:nth-child(2),
+  body.intro-loading #tab-today > .grid.cols-2:nth-of-type(2),
+  body.intro-loading #tab-today > .card,
+  body.intro-loading .app > .footer{
+    animation:intro-rest .45s ease .35s both;
+  }
+  body.intro-loading #tab-today > .grid.cols-2:first-of-type > .card:first-child{
+    animation:intro-task .35s ease both;
+  }
 </style>
 </head>
-<body>
+<body class="intro-loading">
 <div class="app">
   <header>
     <div>
@@ -406,17 +513,19 @@
       </div>
 
       <div class="card">
-        <h2>Фокус-таймер</h2>
-        <div class="timer-display" id="timerDisplay">25:00</div>
+        <h2>Pomodoro</h2>
+        <div class="pomo-phase">
+          <span class="ph active" data-ph="work">работа</span>
+          <span class="ph" data-ph="short">отдых</span>
+          <span class="ph" data-ph="long">длинный</span>
+          <span class="cycles" id="pomoCycles">1/4</span>
+        </div>
+        <div class="timer-display work" id="timerDisplay">25:00</div>
         <div class="row" style="justify-content:center; flex-wrap:wrap">
           <button id="timerStart" class="primary">START</button>
           <button id="timerPause">PAUSE</button>
           <button id="timerReset">RESET</button>
-          <span class="muted">|</span>
-          <button data-min="25" class="timer-preset primary">25</button>
-          <button data-min="50" class="timer-preset">50</button>
-          <button data-min="15" class="timer-preset">15</button>
-          <button data-min="90" class="timer-preset">90</button>
+          <button id="timerSkip" title="следующая фаза">SKIP →</button>
         </div>
         <div class="muted small right" style="margin-top:8px">Сессий сегодня: <span id="sessionsToday">0</span></div>
       </div>
@@ -425,24 +534,31 @@
     <div class="grid cols-2" style="margin-top:18px">
       <div class="card">
         <h2>Привычки</h2>
-        <div class="subnav" id="habitsSubnav">
-          <button data-htab="daily" class="active">[ ЕЖЕДНЕВНЫЕ ]</button>
-          <button data-htab="weekly">[ ЕЖЕНЕДЕЛЬНЫЕ ]</button>
+        <div class="hab-section">
+          <div class="hab-section-head">DAILY</div>
+          <div id="habitsDaily"></div>
+          <div class="add-form" id="addHabitDailyForm">
+            <input id="newHabitName" placeholder="новая ежедневная привычка..."/>
+            <select id="newHabitGoal"><option value="">без цели</option></select>
+            <button class="primary" id="addHabitBtn">+</button>
+          </div>
         </div>
 
-        <div id="habitsDaily"></div>
-        <div class="add-form" id="addHabitDailyForm">
-          <input id="newHabitName" placeholder="новая ежедневная привычка..."/>
-          <select id="newHabitGoal"><option value="">без цели</option></select>
-          <button class="primary" id="addHabitBtn">+</button>
-        </div>
+        <div class="sep"></div>
 
-        <div id="habitsWeekly" style="display:none"></div>
-        <div class="add-form" id="addHabitWeeklyForm" style="display:none">
-          <input id="newWHabitName" placeholder="напр. тренировка"/>
-          <input id="newWHabitTarget" type="number" min="1" max="14" value="3" style="max-width:60px" title="раз в неделю"/>
-          <select id="newWHabitGoal"><option value="">без цели</option></select>
-          <button class="primary" id="addWHabitBtn">+</button>
+        <div class="hab-section">
+          <button class="hab-section-head toggle" id="weeklyHabitsToggle">
+            <span class="chev">›</span> WEEKLY
+          </button>
+          <div class="hab-section-body" id="weeklyHabitsBody">
+            <div id="habitsWeekly"></div>
+            <div class="add-form" id="addHabitWeeklyForm">
+              <input id="newWHabitName" placeholder="напр. тренировка"/>
+              <input id="newWHabitTarget" type="number" min="1" max="14" value="3" style="max-width:60px" title="раз в неделю"/>
+              <select id="newWHabitGoal"><option value="">без цели</option></select>
+              <button class="primary" id="addWHabitBtn">+</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -616,6 +732,24 @@
   </div>
 </div>
 
+<!-- ============== FOCUS OVERLAY ============== -->
+<div id="focusOverlay" class="focus-overlay">
+  <div class="fo-counter" id="foCounter"></div>
+  <div class="fo-mini">
+    <button class="fo-mini-toggle" id="foMiniToggle" title="pomodoro" aria-label="pomodoro">·</button>
+    <div class="fo-mini-panel" id="foMiniPanel">
+      <div class="mp-ph" id="mpPhase">работа · 1/4</div>
+      <div class="mp-time" id="mpTime">25:00</div>
+      <div class="mp-ctl">
+        <button id="mpStart" title="старт">▶</button>
+        <button id="mpPause" title="пауза">‖</button>
+        <button id="mpReset" title="сброс">⟳</button>
+      </div>
+    </div>
+  </div>
+  <div class="fo-stage" id="foStage"></div>
+</div>
+
 <!-- toast host -->
 <div class="toast-host" id="toastHost"></div>
 
@@ -674,7 +808,7 @@ function emptyState(){
     weekGoal: {},         // {YYYY-Www: goalId}
     quotes: [],
     sessions: {},
-    timer: { mode: 25 },
+    timer: { work: 25, short: 5, long: 15, cyclesBeforeLong: 4 },
     lastSeen: null,
     focusMode: false,
   };
@@ -728,6 +862,13 @@ function migrate(st){
   // metrics: drop builtin flag (всё удаляемо/переименовываемо)
   (st.metrics||[]).forEach(m=>{ if ("builtin" in m) delete m.builtin; });
   if (typeof st.focusMode !== "boolean") st.focusMode = false;
+  // timer migration: legacy { mode:N } → pomodoro settings
+  st.timer = st.timer || {};
+  if ('mode' in st.timer) delete st.timer.mode;
+  if (typeof st.timer.work !== "number") st.timer.work = 25;
+  if (typeof st.timer.short !== "number") st.timer.short = 5;
+  if (typeof st.timer.long !== "number") st.timer.long = 15;
+  if (typeof st.timer.cyclesBeforeLong !== "number") st.timer.cyclesBeforeLong = 4;
   return st;
 }
 
@@ -886,6 +1027,26 @@ function todaysTasks(){
   return S.tasks.filter(t => t.date === k);
 }
 
+/* per-task slide-down timers (id → timeoutId). Tasks staying in pending area
+   for ~2s after being checked, then re-rendered to bottom. */
+const taskSlideTimers = {};
+/* Day-done UI: when allDone, hides task list. User can reveal it via undo button. */
+let revealCompletedDay = false;
+
+function renderTaskRow(t, isDragArea){
+  const goal = S.goals.find(g=>g.id===t.goalId);
+  const drag = isDragArea
+    ? `<span class="drag-handle" title="перетащи для порядка" draggable="true">⋮⋮</span>`
+    : '';
+  return `<div class="task ${t.done?'done':''}" data-row="task-${t.id}" data-task-id="${t.id}">
+    ${drag}
+    <input type="checkbox" data-task="${t.id}" ${t.done?'checked':''}/>
+    <div class="text">${escapeHtml(t.text)}</div>
+    ${goal?`<span class="goal-tag">→ ${escapeHtml(goal.title)}</span>`:''}
+    <button class="x" data-del-task="${t.id}">×</button>
+  </div>`;
+}
+
 function renderToday(){
   // meta
   const now = new Date();
@@ -907,29 +1068,21 @@ function renderToday(){
   const addForm = document.getElementById("addTaskForm");
   const taskHint = document.getElementById("taskHint");
   const tt = todaysTasks();
-  const pending = tt.filter(t=>!t.done);
-  const allDone = tt.length>0 && pending.length===0;
+  // "in pending area" = not done OR within slide-down grace period
+  const pendingArea = tt.filter(t => !t.done || taskSlideTimers[t.id]);
+  const completed   = tt.filter(t => t.done && !taskSlideTimers[t.id]);
+  const allDone     = tt.length>0 && pendingArea.length===0;
 
-  if (allDone){
-    // Empty / day-done state
+  if (allDone && !revealCompletedDay){
+    // Empty / day-done state — minimal undo button to bring tasks back if
+    // a checkbox was hit by accident.
     const msgs = ["на сегодня всё", "день закрыт", "хорошо", "достаточно"];
     const msg = msgs[Math.floor(Math.random()*msgs.length)];
     list.innerHTML = `<div class="day-done">
       <div class="msg">${msg}</div>
       <div class="sub">не догружай. отдых — часть работы.</div>
-    </div>`;
-    addForm.style.display = "none";
-    taskHint.style.display = "none";
-  } else if (S.focusMode && pending.length){
-    const t = pending[0];
-    const goal = S.goals.find(g=>g.id===t.goalId);
-    const idx = tt.indexOf(t);
-    list.innerHTML = `<div class="focus-one" data-row="task-${t.id}">
-      <div class="lbl">сейчас · ${pending.length} осталось</div>
-      <div class="text">${escapeHtml(t.text)}${goal?`<span class="goal-tag">→ ${escapeHtml(goal.title)}</span>`:''}</div>
-      <div class="actions">
-        <button class="big primary" data-focus-done="${t.id}">✓ ВЫПОЛНЕНО</button>
-        ${pending.length>1?`<button data-focus-skip="${t.id}" title="отложить вниз">↓ отложить</button>`:''}
+      <div class="day-done-actions">
+        <button class="undo" id="dayDoneUndo" title="показать выполненные задачи — можно снять галочку">↶ задачи</button>
       </div>
     </div>`;
     addForm.style.display = "none";
@@ -939,24 +1092,19 @@ function renderToday(){
     addForm.style.display = "";
     taskHint.style.display = "";
   } else {
-    list.innerHTML = tt.map((t,idx)=>{
-      const goal = S.goals.find(g=>g.id===t.goalId);
-      const upDis = idx===0 ? 'style="visibility:hidden"' : '';
-      const dnDis = idx===tt.length-1 ? 'style="visibility:hidden"' : '';
-      return `<div class="task ${t.done?'done':''}" data-row="task-${t.id}">
-        <div class="ord">
-          <button data-move="up|${t.id}" ${upDis} title="выше">▲</button>
-          <button data-move="dn|${t.id}" ${dnDis} title="ниже">▼</button>
-        </div>
-        <input type="checkbox" data-task="${t.id}" ${t.done?'checked':''}/>
-        <div class="text">${escapeHtml(t.text)}</div>
-        ${goal?`<span class="goal-tag">→ ${escapeHtml(goal.title)}</span>`:''}
-        <button class="x" data-del-task="${t.id}">×</button>
-      </div>`;
-    }).join("");
+    const pendingHtml = pendingArea.map(t => renderTaskRow(t, true)).join("");
+    const dividerHtml = completed.length
+      ? `<div class="task-divider">выполнено · ${completed.length}</div>`
+      : "";
+    const completedHtml = completed.map(t => renderTaskRow(t, false)).join("");
+    list.innerHTML = pendingHtml + dividerHtml + completedHtml;
     addForm.style.display = "";
     taskHint.style.display = "";
   }
+
+  // if allDone and we revealed list, but user unchecked everything pending again
+  // we may still want to clear the reveal flag at next natural transition
+  if (!allDone) revealCompletedDay = false;
 
   // progress (общий день)
   const sc = dayScore(todayKey());
@@ -1108,6 +1256,38 @@ document.getElementById("newTaskText").addEventListener("keydown",e=>{
   if (e.key==="Enter") document.getElementById("addTaskBtn").click();
 });
 
+/* FLIP animation: smoothly animate position changes when re-rendering a list. */
+function flipRender(containerSel, renderFn){
+  const c = document.querySelector(containerSel);
+  if (!c){ renderFn(); return; }
+  const firstRects = new Map();
+  c.querySelectorAll("[data-row]").forEach(el=>{
+    firstRects.set(el.dataset.row, el.getBoundingClientRect());
+  });
+  renderFn();
+  const newEls = c.querySelectorAll("[data-row]");
+  newEls.forEach(el=>{
+    const first = firstRects.get(el.dataset.row);
+    if (!first) return;
+    const last = el.getBoundingClientRect();
+    const dy = first.top - last.top;
+    if (Math.abs(dy) < 1) return;
+    el.style.transition = "none";
+    el.style.transform = `translateY(${dy}px)`;
+    requestAnimationFrame(()=>{
+      el.style.transition = "";
+      el.style.transform = "";
+    });
+  });
+}
+
+function clearTaskSlide(id){
+  if (taskSlideTimers[id]){
+    clearTimeout(taskSlideTimers[id]);
+    delete taskSlideTimers[id];
+  }
+}
+
 document.getElementById("todayTasks").addEventListener("click", e=>{
   const cb = e.target.closest("input[type=checkbox][data-task]");
   if (cb){
@@ -1116,79 +1296,136 @@ document.getElementById("todayTasks").addEventListener("click", e=>{
     if (t){
       t.done = cb.checked;
       save();
-      if (t.done){ popEl(cb); pulseRow("task-"+id); confettiAt(cb); toast(); }
-      renderToday();
+      if (t.done){
+        popEl(cb); pulseRow("task-"+id); confettiAt(cb); toast();
+        // keep task in pending area for 2s, then slide down to completed list
+        clearTaskSlide(id);
+        taskSlideTimers[id] = setTimeout(()=>{
+          delete taskSlideTimers[id];
+          flipRender("#todayTasks", ()=>renderToday());
+        }, 2000);
+        // immediate render (task stays in place visually, marked done)
+        renderToday();
+        // dim the just-checked row to signal it's leaving soon
+        const row = document.querySelector(`[data-row="task-${id}"]`);
+        if (row) row.classList.add("fading");
+      } else {
+        // unchecking: cancel any pending slide and re-render with FLIP
+        clearTaskSlide(id);
+        flipRender("#todayTasks", ()=>renderToday());
+      }
     }
     return;
   }
-  const mv = e.target.closest("[data-move]");
-  if (mv){
-    const [dir,id] = mv.dataset.move.split("|");
-    const list = todaysTasks();
-    const idx = S.tasks.findIndex(x=>x.id===id);
-    const localIdx = list.findIndex(x=>x.id===id);
-    if (idx<0) return;
-    const swapWith = dir==="up" ? list[localIdx-1] : list[localIdx+1];
-    if (!swapWith) return;
-    const swapIdx = S.tasks.findIndex(x=>x.id===swapWith.id);
-    [S.tasks[idx], S.tasks[swapIdx]] = [S.tasks[swapIdx], S.tasks[idx]];
-    save(); renderToday();
-    return;
-  }
-  const fd = e.target.closest("[data-focus-done]");
-  if (fd){
-    const t = S.tasks.find(x=>x.id===fd.dataset.focusDone);
-    if (t){
-      t.done = true; save();
-      pulseRow("task-"+t.id); confettiAt(fd); toast();
-      renderToday();
-    }
-    return;
-  }
-  const fs = e.target.closest("[data-focus-skip]");
-  if (fs){
-    const id = fs.dataset.focusSkip;
-    const idx = S.tasks.findIndex(x=>x.id===id);
-    if (idx>=0){
-      const [t] = S.tasks.splice(idx,1);
-      // вставляем в конец задач этого дня
-      let lastIdxOfDay = -1;
-      S.tasks.forEach((x,i)=>{ if (x.date===t.date) lastIdxOfDay = i; });
-      S.tasks.splice(lastIdxOfDay+1, 0, t);
-      save(); renderToday();
-    }
+  const dd = e.target.closest("#dayDoneUndo");
+  if (dd){
+    revealCompletedDay = true;
+    renderToday();
     return;
   }
   const x = e.target.closest("[data-del-task]");
   if (x){
     const id = x.dataset.delTask;
+    clearTaskSlide(id);
     S.tasks = S.tasks.filter(t=>t.id!==id);
     save(); renderToday();
   }
 });
 
-/* Focus toggle */
+/* ----- Drag & drop reorder for pending tasks ----- */
+let dragState = null; // {id, fromEl}
+const todayList = document.getElementById("todayTasks");
+
+todayList.addEventListener("dragstart", e=>{
+  const handle = e.target.closest(".drag-handle");
+  if (!handle){ e.preventDefault(); return; }
+  const row = handle.closest(".task[data-task-id]");
+  if (!row){ e.preventDefault(); return; }
+  dragState = { id: row.dataset.taskId, fromEl: row };
+  row.classList.add("dragging");
+  try{
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", row.dataset.taskId);
+    // dragImage on row instead of handle
+    const r = row.getBoundingClientRect();
+    e.dataTransfer.setDragImage(row, 20, r.height/2);
+  }catch(_){}
+});
+
+todayList.addEventListener("dragover", e=>{
+  if (!dragState) return;
+  const row = e.target.closest(".task[data-task-id]");
+  if (!row || row.classList.contains("done")) return; // only drop onto pending rows
+  if (row.dataset.taskId === dragState.id) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+  // visual indicator: top half = drop above, bottom half = drop below
+  const rect = row.getBoundingClientRect();
+  const before = (e.clientY - rect.top) < rect.height/2;
+  todayList.querySelectorAll(".drag-over-top, .drag-over-bot").forEach(x=>{
+    x.classList.remove("drag-over-top","drag-over-bot");
+  });
+  row.classList.add(before ? "drag-over-top" : "drag-over-bot");
+});
+
+todayList.addEventListener("dragleave", e=>{
+  const row = e.target.closest(".task[data-task-id]");
+  if (row && !row.contains(e.relatedTarget)){
+    row.classList.remove("drag-over-top","drag-over-bot");
+  }
+});
+
+todayList.addEventListener("drop", e=>{
+  if (!dragState) return;
+  const row = e.target.closest(".task[data-task-id]");
+  if (!row || row.classList.contains("done")) return;
+  const destId = row.dataset.taskId;
+  const srcId  = dragState.id;
+  if (srcId === destId) return;
+  e.preventDefault();
+  const rect = row.getBoundingClientRect();
+  const before = (e.clientY - rect.top) < rect.height/2;
+  // reorder S.tasks: remove src, insert before/after dest
+  const srcIdx = S.tasks.findIndex(t=>t.id===srcId);
+  if (srcIdx<0) return;
+  const [moved] = S.tasks.splice(srcIdx, 1);
+  let destIdx = S.tasks.findIndex(t=>t.id===destId);
+  if (destIdx<0){ S.tasks.splice(srcIdx, 0, moved); return; }
+  S.tasks.splice(before ? destIdx : destIdx+1, 0, moved);
+  save();
+  flipRender("#todayTasks", ()=>renderToday());
+});
+
+todayList.addEventListener("dragend", ()=>{
+  if (dragState){
+    dragState.fromEl?.classList.remove("dragging");
+    dragState = null;
+  }
+  todayList.querySelectorAll(".drag-over-top, .drag-over-bot").forEach(x=>{
+    x.classList.remove("drag-over-top","drag-over-bot");
+  });
+});
+
+/* Focus toggle: opens fullscreen overlay (see Focus Mode section) */
 document.getElementById("focusToggle").addEventListener("click", ()=>{
-  S.focusMode = !S.focusMode;
-  save(); renderToday();
+  if (S.focusMode){ exitFocus(); }
+  else { enterFocus(); }
 });
 
 /* ============================================================
    HABITS (daily + weekly) + SUPPS (multi-intake)
 ============================================================ */
 
-// subnav for habits
-let habitsTab = "daily";
-document.getElementById("habitsSubnav").addEventListener("click", e=>{
-  const b = e.target.closest("button[data-htab]");
-  if (!b) return;
-  habitsTab = b.dataset.htab;
-  document.querySelectorAll("#habitsSubnav button").forEach(x=>x.classList.toggle("active", x===b));
-  document.getElementById("habitsDaily").style.display = habitsTab==="daily"?"":"none";
-  document.getElementById("addHabitDailyForm").style.display = habitsTab==="daily"?"":"none";
-  document.getElementById("habitsWeekly").style.display = habitsTab==="weekly"?"":"none";
-  document.getElementById("addHabitWeeklyForm").style.display = habitsTab==="weekly"?"":"none";
-});
+// Weekly habits — collapsible (replaces old daily/weekly subnav). Daily list is
+// always visible at the top; Weekly section starts collapsed and toggles open.
+const weeklyToggle = document.getElementById("weeklyHabitsToggle");
+const weeklyBody   = document.getElementById("weeklyHabitsBody");
+if (weeklyToggle && weeklyBody){
+  weeklyToggle.addEventListener("click", ()=>{
+    const open = weeklyToggle.classList.toggle("open");
+    weeklyBody.classList.toggle("open", open);
+  });
+}
 
 function renderHabits(){
   const dailyWrap = document.getElementById("habitsDaily");
@@ -1925,60 +2162,123 @@ document.getElementById("tab-goals").addEventListener("click", e=>{
 });
 
 /* ============================================================
-   FOCUS TIMER
+   POMODORO TIMER
+   Phases: work (default 25m) → short break (5m) → ... after N work cycles
+   (default 4) → long break (15m) → reset to work cycle 1.
 ============================================================ */
-const tState = { sec: 25*60, mode: 25, running:false, intv:null, finished:false };
+const tState = {
+  phase: "work",
+  cycle: 1,
+  sec: 25*60,
+  running: false,
+  finished: false,
+  intv: null,
+};
+
 function fmtMS(s){
   const m = Math.floor(s/60), ss = s%60;
   return `${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
 }
-function renderTimer(){
-  const el = document.getElementById("timerDisplay");
-  el.textContent = fmtMS(Math.max(0,tState.sec));
-  el.classList.toggle("paused", !tState.running && !tState.finished);
-  el.classList.toggle("done", tState.finished);
+function phaseDuration(phase){
+  const t = S.timer || {};
+  if (phase === "work")  return (t.work  || 25) * 60;
+  if (phase === "short") return (t.short || 5)  * 60;
+  if (phase === "long")  return (t.long  || 15) * 60;
+  return 25*60;
 }
-function setMode(min){
-  tState.mode = min; tState.sec = min*60; tState.running=false; tState.finished=false;
-  if (tState.intv) clearInterval(tState.intv);
-  S.timer.mode = min; save();
-  document.querySelectorAll(".timer-preset").forEach(b=>{
-    b.classList.toggle("primary", +b.dataset.min === min);
-  });
+function nextPhase(){
+  const cbl = (S.timer?.cyclesBeforeLong) || 4;
+  if (tState.phase === "work"){
+    return tState.cycle >= cbl
+      ? { phase:"long",  cycle: tState.cycle }
+      : { phase:"short", cycle: tState.cycle };
+  }
+  if (tState.phase === "short") return { phase:"work", cycle: tState.cycle + 1 };
+  if (tState.phase === "long")  return { phase:"work", cycle: 1 };
+  return { phase:"work", cycle: 1 };
+}
+function setPhase(phase, cycle){
+  if (tState.intv){ clearInterval(tState.intv); tState.intv = null; }
+  tState.phase = phase;
+  tState.cycle = cycle;
+  tState.sec = phaseDuration(phase);
+  tState.running = false;
+  tState.finished = false;
   renderTimer();
 }
-document.querySelectorAll(".timer-preset").forEach(b=>{
-  b.addEventListener("click", ()=> setMode(+b.dataset.min));
-});
-document.getElementById("timerStart").addEventListener("click", ()=>{
+function renderTimer(){
+  const el = document.getElementById("timerDisplay");
+  if (!el) return;
+  el.textContent = fmtMS(Math.max(0, tState.sec));
+  el.classList.remove("work","short","long","paused","done");
+  el.classList.add(tState.phase);
+  if (!tState.running && !tState.finished) el.classList.add("paused");
+  if (tState.finished) el.classList.add("done");
+
+  document.querySelectorAll(".pomo-phase .ph").forEach(p=>{
+    p.classList.toggle("active", p.dataset.ph === tState.phase);
+  });
+  const cyclesEl = document.getElementById("pomoCycles");
+  if (cyclesEl){
+    const cbl = (S.timer?.cyclesBeforeLong) || 4;
+    cyclesEl.textContent = `${tState.cycle}/${cbl}`;
+  }
+  renderMiniPomo();
+}
+function startTimer(){
   if (tState.running) return;
-  tState.running = true; tState.finished=false;
+  if (tState.finished){
+    // jump to next phase first, then start
+    const nx = nextPhase();
+    setPhase(nx.phase, nx.cycle);
+  }
+  tState.running = true;
+  tState.finished = false;
+  if (tState.intv) clearInterval(tState.intv);
   tState.intv = setInterval(()=>{
     tState.sec--;
     if (tState.sec <= 0){
-      clearInterval(tState.intv);
-      tState.running=false; tState.finished=true;
-      // count session
-      const k = todayKey();
-      S.sessions[k] = (S.sessions[k]||0) + 1;
-      save();
+      clearInterval(tState.intv); tState.intv = null;
+      tState.running = false;
+      tState.finished = true;
+      // count work sessions only
+      if (tState.phase === "work"){
+        const k = todayKey();
+        S.sessions[k] = (S.sessions[k]||0) + 1;
+        save();
+        const sEl = document.getElementById("sessionsToday");
+        if (sEl) sEl.textContent = S.sessions[k];
+      }
       renderTimer();
       try{ beep(); }catch(e){}
-      document.getElementById("sessionsToday").textContent = S.sessions[k];
+      // auto-advance to next phase, but stay paused (manual start)
+      setTimeout(()=>{
+        const nx = nextPhase();
+        setPhase(nx.phase, nx.cycle);
+      }, 500);
       return;
     }
     renderTimer();
   }, 1000);
   renderTimer();
-});
-document.getElementById("timerPause").addEventListener("click", ()=>{
-  tState.running=false;
-  if (tState.intv) clearInterval(tState.intv);
+}
+function pauseTimer(){
+  tState.running = false;
+  if (tState.intv){ clearInterval(tState.intv); tState.intv = null; }
   renderTimer();
-});
-document.getElementById("timerReset").addEventListener("click", ()=>{
-  setMode(tState.mode);
-});
+}
+function resetTimer(){ setPhase("work", 1); }
+function skipPhase(){
+  if (tState.intv){ clearInterval(tState.intv); tState.intv = null; }
+  const nx = nextPhase();
+  setPhase(nx.phase, nx.cycle);
+}
+
+document.getElementById("timerStart").addEventListener("click", startTimer);
+document.getElementById("timerPause").addEventListener("click", pauseTimer);
+document.getElementById("timerReset").addEventListener("click", resetTimer);
+document.getElementById("timerSkip").addEventListener("click", skipPhase);
+
 function beep(){
   const ctx = new (window.AudioContext||window.webkitAudioContext)();
   const o = ctx.createOscillator(), g = ctx.createGain();
@@ -2071,8 +2371,136 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
 }
 
-/* init */
-setMode(S.timer?.mode || 25);
+/* ============================================================
+   FOCUS MODE — fullscreen overlay
+   Hides UI, shows blank for ~5s, then a single centered task with a Done
+   button and a deliberately provocative exit ("сдаться") so leaving the
+   mode without finishing feels like quitting.
+============================================================ */
+const focusOverlay = document.getElementById("focusOverlay");
+const foStage      = document.getElementById("foStage");
+const foCounter    = document.getElementById("foCounter");
+const foMiniToggle = document.getElementById("foMiniToggle");
+const foMiniPanel  = document.getElementById("foMiniPanel");
+
+let focusBlankTimeout = null;
+
+function focusVisibleTask(){
+  // First pending task of today (in S.tasks order).
+  return todaysTasks().find(t => !t.done) || null;
+}
+
+function renderFocusStage(){
+  if (!S.focusMode) return;
+  const t = focusVisibleTask();
+  const pendingCount = todaysTasks().filter(x=>!x.done).length;
+  if (!t){
+    // nothing left — show terminal "all done" message and exit button
+    foCounter.textContent = "";
+    foStage.innerHTML = `
+      <div class="fo-empty">на сегодня всё</div>
+      <div class="fo-actions" style="margin-top:24px">
+        <button class="fo-exit" data-fo-exit>выйти</button>
+      </div>`;
+    return;
+  }
+  const goal = S.goals.find(g=>g.id===t.goalId);
+  foCounter.textContent = pendingCount > 1 ? `осталось · ${pendingCount}` : "одна задача";
+  foStage.innerHTML = `
+    <div class="fo-text">${escapeHtml(t.text)}${goal?`<span class="fo-goal">→ ${escapeHtml(goal.title)}</span>`:''}</div>
+    <div class="fo-actions">
+      <button class="fo-done" data-fo-done="${t.id}">✓ выполнено</button>
+    </div>
+    <div style="margin-top:34px">
+      <button class="fo-exit" data-fo-exit>сдаться</button>
+    </div>
+  `;
+}
+
+function enterFocus(){
+  S.focusMode = true; save();
+  document.body.classList.add("focus-active");
+  focusOverlay.classList.add("on");
+  focusOverlay.classList.remove("ready");
+  // start blank: render hidden stage
+  foStage.innerHTML = "";
+  foCounter.textContent = "";
+  // hide mini-pomo when entering
+  foMiniPanel?.classList.remove("open");
+  // 5s blank, then reveal
+  if (focusBlankTimeout) clearTimeout(focusBlankTimeout);
+  focusBlankTimeout = setTimeout(()=>{
+    renderFocusStage();
+    focusOverlay.classList.add("ready");
+  }, 5000);
+  // update top toggle visual
+  document.getElementById("focusToggle")?.classList.add("on");
+}
+
+function exitFocus(){
+  S.focusMode = false; save();
+  if (focusBlankTimeout){ clearTimeout(focusBlankTimeout); focusBlankTimeout = null; }
+  focusOverlay.classList.remove("on","ready");
+  document.body.classList.remove("focus-active");
+  foMiniPanel?.classList.remove("open");
+  document.getElementById("focusToggle")?.classList.remove("on");
+  renderToday();
+}
+
+focusOverlay.addEventListener("click", e=>{
+  const done = e.target.closest("[data-fo-done]");
+  if (done){
+    const id = done.dataset.foDone;
+    const t = S.tasks.find(x=>x.id===id);
+    if (!t) return;
+    t.done = true; save();
+    confettiAt(done); toast();
+    // brief flash, then advance to next pending task (or empty state)
+    setTimeout(()=>{
+      const next = focusVisibleTask();
+      if (!next){
+        // all tasks done — exit focus naturally
+        exitFocus();
+        return;
+      }
+      renderFocusStage();
+    }, 350);
+    return;
+  }
+  if (e.target.closest("[data-fo-exit]")){
+    exitFocus();
+    return;
+  }
+});
+
+/* mini pomodoro inside focus overlay */
+foMiniToggle?.addEventListener("click", ()=>{
+  foMiniPanel.classList.toggle("open");
+  renderMiniPomo();
+});
+
+function renderMiniPomo(){
+  if (!foMiniPanel || !foMiniPanel.classList.contains("open")) return;
+  foMiniPanel.classList.remove("work","short","long");
+  foMiniPanel.classList.add(tState.phase);
+  const labels = { work:"работа", short:"отдых", long:"длинный" };
+  const cbl = (S.timer?.cyclesBeforeLong) || 4;
+  document.getElementById("mpPhase").textContent = `${labels[tState.phase]} · ${tState.cycle}/${cbl}`;
+  document.getElementById("mpTime").textContent = fmtMS(Math.max(0, tState.sec));
+}
+
+document.getElementById("mpStart")?.addEventListener("click", startTimer);
+document.getElementById("mpPause")?.addEventListener("click", pauseTimer);
+document.getElementById("mpReset")?.addEventListener("click", resetTimer);
+
+/* ============================================================
+   INIT
+============================================================ */
+// reset legacy focusMode flag at start — focus is a transient UI state, not
+// something we want to persist across reloads (avoids stuck overlays).
+S.focusMode = false; save();
+
+setPhase("work", 1);
 renderToday();
 setInterval(renderToday, 60000); // обновлять время в шапке раз в минуту
 </script>
