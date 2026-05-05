@@ -154,6 +154,9 @@
   .empty{color:var(--dim); font-style:italic; font-size:12px; padding:8px 0}
 
   .footer{margin-top:30px; padding-top:14px; border-top:1px solid var(--line); color:var(--dim); font-size:11px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px}
+  .footer a{color:var(--accent); text-decoration:none; border-bottom:1px dashed var(--accent)}
+  .footer a:hover{color:#7eff7e; border-bottom-color:#7eff7e}
+  .footer .credit{flex-basis:100%; text-align:center; padding-top:6px; opacity:.85}
 
   /* ===== Streaks bar ===== */
   .streak-bar{display:flex; gap:14px; flex-wrap:wrap; align-items:center; padding:10px 14px;
@@ -692,14 +695,17 @@
        Each task is one row, wraps if long. Min 44px tall via .task padding. */
     .drag-handle{ display:none !important; }
     .reorder-btns{
-      display:flex !important; flex-direction:column; gap:2px; flex:none;
+      display:flex !important; flex-direction:column; gap:1px; flex:none;
+      align-self:center;
     }
     .reorder-btns button{
-      width:32px; height:22px; padding:0; font-size:12px; line-height:1;
-      border:1px solid var(--line); background:#000; color:var(--dim);
+      width:22px; height:16px; padding:0; font-size:10px; line-height:1;
+      border:none; background:transparent; color:var(--dim);
+      min-height:0;
     }
-    .reorder-btns button:disabled{ opacity:.3; }
-    .reorder-btns button:hover:not(:disabled){ color:var(--accent); border-color:var(--accent); }
+    .reorder-btns button:disabled{ opacity:.25; }
+    .reorder-btns button:hover:not(:disabled),
+    .reorder-btns button:active:not(:disabled){ color:var(--accent); }
 
     .task{ gap:8px; padding:10px 8px; flex-wrap:wrap; }
     .task .text{ flex:1 1 auto; min-width:0; }
@@ -997,6 +1003,7 @@
   <div class="footer">
     <div>FOCUS_OS v1 · локально + облако (опционально)</div>
     <div id="footerStats"></div>
+    <div class="credit">автор: <a href="https://t.me/Human2pt0" target="_blank" rel="noopener noreferrer">Человек</a></div>
   </div>
 </div>
 
@@ -3239,9 +3246,31 @@ document.getElementById("authUsername")?.addEventListener("keydown", (e) => {
 });
 
 document.getElementById("authSignOut")?.addEventListener("click", async () => {
-  if (!sb) return;
-  await sb.auth.signOut();
+  console.log("[auth] sign-out clicked");
+  if (!sb){ console.warn("[auth] no sb client, cannot sign out"); return; }
+  try {
+    const { error } = await sb.auth.signOut();
+    if (error) console.warn("[auth] sb.signOut returned error:", error);
+  } catch (e){
+    console.warn("[auth] sb.signOut threw:", e);
+  }
+  // Always clean up the local UI/state even if the network call failed —
+  // the user's intent was to log out.
   cloudUser = null;
+  if (cloudChannel){ try { sb.removeChannel(cloudChannel); } catch(_){} cloudChannel = null; }
+  lastSyncStamp = 0;
+  lastPushedUpdatedAt = 0;
+  // Drop any persisted Supabase session tokens so a stale token never
+  // re-authenticates the user after reload.
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--){
+      const k = localStorage.key(i);
+      if (k && k.startsWith("sb-") && (k.endsWith("-auth-token") || k.includes("-auth-token"))){
+        console.log("[auth] removing localStorage key:", k);
+        localStorage.removeItem(k);
+      }
+    }
+  } catch(_){}
   setCloudStatus("offline", "войти");
   hideAuthOverlay();
   toast("вышли");
