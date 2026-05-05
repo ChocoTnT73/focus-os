@@ -3060,16 +3060,31 @@ async function cloudInit(){
   cloudLoadingResolve();
 }
 
+/* Race a promise against a hard timeout so a hung network never freezes UI. */
+function withTimeout(promise, ms, label){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(
+      () => reject(new Error("timeout " + (label || "") + " " + ms + "ms")),
+      ms
+    ))
+  ]);
+}
+
 /* Cloud always wins on pull. Cache replaced with cloud state. */
 async function cloudPull(){
   if (!cloudReady()){ console.log("[cloud] pull skipped, not ready"); return; }
   console.log("[cloud] pulling for user:", cloudUser.email);
   try {
-    const { data, error } = await sb
-      .from("user_data")
-      .select("state, updated_at")
-      .eq("user_id", cloudUser.id)
-      .maybeSingle();
+    const result = await withTimeout(
+      sb.from("user_data")
+        .select("state, updated_at")
+        .eq("user_id", cloudUser.id)
+        .maybeSingle(),
+      8000,
+      "pull"
+    );
+    const { data, error } = result;
     if (error) throw error;
 
     if (!data){
@@ -3087,7 +3102,7 @@ async function cloudPull(){
                 "→ cloud wins (always)");
     applyCloudState(cloudState, cloudUpdated);
   } catch (e){
-    console.warn("[cloud] pull failed:", e);
+    console.warn("[cloud] pull failed:", e?.message || e);
     setCloudStatus("error", "ошибка");
   }
 }
@@ -3129,17 +3144,21 @@ async function cloudPushNow(seed){
               "tasks=", S.tasks?.length, "habits=", S.habits?.length,
               "username=", S.profile?.username || "(none)");
   try {
-    const { error } = await sb.from("user_data").upsert({
-      user_id: cloudUser.id,
-      state: S,
-      updated_at: new Date(S._updatedAt).toISOString()
-    }, { onConflict: "user_id" });
+    const { error } = await withTimeout(
+      sb.from("user_data").upsert({
+        user_id: cloudUser.id,
+        state: S,
+        updated_at: new Date(S._updatedAt).toISOString()
+      }, { onConflict: "user_id" }),
+      8000,
+      "push"
+    );
     if (error) throw error;
     lastSyncStamp = S._updatedAt;
     console.log("[cloud] push ok, lastSyncStamp =", lastSyncStamp);
     setCloudStatus("online", displayName());
   } catch (e){
-    console.warn("[cloud] push failed:", e);
+    console.warn("[cloud] push failed:", e?.message || e);
     setCloudStatus("error", "ошибка");
   } finally {
     cloudPushInFlight = false;
@@ -3177,15 +3196,16 @@ function cloudSubscribe(){
       })
     .subscribe(status => {
       console.log("[cloud] realtime status:", status);
-      // If the channel drops (sleep, network blip), reconnect on next visibility/online.
+      // Realtime is an optimisation, not a hard requirement. If it drops we
+      // schedule a reconnect and keep relying on the 30s safety pull, but we
+      // do NOT flip the main status pill — that pill should reflect actual
+      // data sync, not the realtime websocket. Otherwise a flaky realtime
+      // makes the pill blink "syncing" forever.
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED"){
-        setCloudStatus("syncing", displayName());
-        // Try to re-subscribe shortly.
+        // Try to re-subscribe shortly, with a small backoff cap.
         setTimeout(() => {
           if (cloudReady()) cloudSubscribe();
-        }, 1500);
-      } else if (status === "SUBSCRIBED"){
-        setCloudStatus("online", displayName());
+        }, 5000);
       }
     });
 }
