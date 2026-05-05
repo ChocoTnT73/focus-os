@@ -3249,10 +3249,35 @@ document.getElementById("authSignOut")?.addEventListener("click", async () => {
 
 /* ============================================================
    PWA — service worker
+   Network-first for HTML, cache-first for static. When a new SW
+   takes over we reload once so the user gets the new shell.
 ============================================================ */
 if ("serviceWorker" in navigator && location.protocol !== "file:"){
+  let reloadOnce = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloadOnce) return;
+    reloadOnce = true;
+    console.log("[sw] new controller — reloading");
+    location.reload();
+  });
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(e => console.warn("sw register failed:", e));
+    navigator.serviceWorker.register("sw.js")
+      .then(reg => {
+        // Force update check on every load.
+        try { reg.update(); } catch(_) {}
+        if (reg.waiting) reg.waiting.postMessage("SKIP_WAITING");
+        reg.addEventListener("updatefound", () => {
+          const nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener("statechange", () => {
+            if (nw.state === "installed" && navigator.serviceWorker.controller){
+              // New version available — activate it now.
+              nw.postMessage("SKIP_WAITING");
+            }
+          });
+        });
+      })
+      .catch(e => console.warn("sw register failed:", e));
   });
 }
 
@@ -3293,7 +3318,7 @@ function hasLikelySession(){
     cloudInit();
     await Promise.race([
       cloudLoadingPromise,
-      new Promise(r => setTimeout(r, 4000))
+      new Promise(r => setTimeout(r, 2500))
     ]);
     document.body.classList.remove("cloud-loading");
   } else {

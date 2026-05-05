@@ -1,10 +1,13 @@
-/* FOCUS_OS service worker — offline-first cache for the shell.
-   Strategy: cache-first for static shell, network-first for any
-   third-party CDN (chart.js, supabase). Bump CACHE_VER to invalidate. */
-const CACHE_VER = "focus-os-v3";
+/* FOCUS_OS service worker.
+   Strategy:
+     - HTML (index.html, "/", any navigation) → NETWORK-FIRST.
+       We never want a stale shell. Cache is only a fallback for offline.
+     - Same-origin static assets (icons, manifest) → cache-first with revalidation.
+     - Third-party CDN (jsdelivr/unpkg/cdnjs) → cache-first.
+     - Supabase/API → bypass SW entirely.
+   Bump CACHE_VER on every release to invalidate everything. */
+const CACHE_VER = "focus-os-v6";
 const SHELL = [
-  "./",
-  "./index.html",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
@@ -14,7 +17,9 @@ const SHELL = [
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
-    caches.open(CACHE_VER).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())
+    caches.open(CACHE_VER)
+      .then((c) => c.addAll(SHELL).catch(() => {}))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -26,21 +31,54 @@ self.addEventListener("activate", (e) => {
   );
 });
 
+self.addEventListener("message", (e) => {
+  if (e.data === "SKIP_WAITING") self.skipWaiting();
+});
+
+function isHtmlRequest(req){
+  if (req.mode === "navigate") return true;
+  const accept = req.headers.get("accept") || "";
+  return accept.includes("text/html");
+}
+
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
-  // Don't cache Supabase / auth / API calls — always go to network.
+
+  // Bypass Supabase / auth / API
   if (url.hostname.includes("supabase.co") || url.hostname.includes("supabase.in")) {
     return;
   }
-  // Cache-first for same-origin shell + CDN libs.
+
+  // Network-first for HTML (index.html and any navigation request).
+  if (isHtmlRequest(req)) {
+    e.respondWith(
+      fetch(req).then((res) => {
+        // Cache the latest copy for offline fallback.
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE_VER).then((c) => c.put(req, copy)).catch(() => {});
+        }
+        return res;
+      }).catch(() =>
+        caches.match(req).then((cached) => cached || caches.match("./index.html"))
+      )
+    );
+    return;
+  }
+
+  // Cache-first for static assets (icons/manifest/CDN libs).
   e.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
       return fetch(req).then((res) => {
-        // opportunistically cache successful GETs
-        if (res.ok && (url.origin === self.location.origin || url.hostname.includes("jsdelivr") || url.hostname.includes("unpkg") || url.hostname.includes("cdnjs"))) {
+        if (res.ok && (
+          url.origin === self.location.origin ||
+          url.hostname.includes("jsdelivr") ||
+          url.hostname.includes("unpkg") ||
+          url.hostname.includes("cdnjs")
+        )) {
           const copy = res.clone();
           caches.open(CACHE_VER).then((c) => c.put(req, copy)).catch(() => {});
         }
