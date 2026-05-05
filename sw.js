@@ -6,7 +6,7 @@
      - Third-party CDN (jsdelivr/unpkg/cdnjs) → cache-first.
      - Supabase/API → bypass SW entirely.
    Bump CACHE_VER on every release to invalidate everything. */
-const CACHE_VER = "focus-os-v6";
+const CACHE_VER = "focus-os-v7";
 const SHELL = [
   "./manifest.json",
   "./icon-192.png",
