@@ -3009,6 +3009,10 @@ async function cloudInit(){
         toast("этот email не в whitelist'е");
         return;
       }
+      // Push the JWT to the realtime client. supabase-js v2 should do this
+      // automatically but in some versions it lags behind, which causes
+      // realtime postgres_changes channels to flap SUBSCRIBED→CLOSED.
+      try { sb.realtime.setAuth(session.access_token); } catch(_){}
       const wasNewLogin = !cloudUser;
       cloudUser = session.user;
       if (wasNewLogin){
@@ -3042,6 +3046,7 @@ async function cloudInit(){
       } else {
         cloudUser = data.session.user;
         console.log("[cloud] existing session:", cloudUser.email);
+        try { sb.realtime.setAuth(data.session.access_token); } catch(_){}
         setCloudStatus("syncing", displayName());
         await cloudPull();
         setCloudStatus("online", displayName());
@@ -3202,10 +3207,17 @@ function cloudSubscribe(){
       // data sync, not the realtime websocket. Otherwise a flaky realtime
       // makes the pill blink "syncing" forever.
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED"){
-        // Try to re-subscribe shortly, with a small backoff cap.
+        // Try to re-subscribe with backoff to avoid spamming the WS endpoint
+        // when something at the server side keeps closing us (typically RLS
+        // missing). Backs off up to 30s.
+        cloudRealtimeBackoff = Math.min((cloudRealtimeBackoff || 5000) * 2, 30000);
+        console.log("[cloud] realtime reconnect in", cloudRealtimeBackoff, "ms");
         setTimeout(() => {
           if (cloudReady()) cloudSubscribe();
-        }, 5000);
+        }, cloudRealtimeBackoff);
+      } else if (status === "SUBSCRIBED"){
+        // Reset backoff on successful subscribe.
+        cloudRealtimeBackoff = 5000;
       }
     });
 }
@@ -3240,6 +3252,7 @@ async function cloudRefresh(reason, force){
    was lost while in the background (this is the main fix for "iPhone is slow
    to sync after the app was closed for a while"). */
 let cloudPollTimer = null;
+let cloudRealtimeBackoff = 5000;
 function startCloudPolling(){
   if (cloudPollTimer) clearInterval(cloudPollTimer);
   // Periodic safety net in case realtime is broken or the tab missed events.
