@@ -2,9 +2,19 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>FOCUS_OS</title>
+<!-- PWA -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0a0a0a" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="FOCUS_OS" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --bg:#0a0a0a;
@@ -42,10 +52,13 @@
   @keyframes blink{50%{opacity:0}}
   .meta{color:var(--dim); font-size:12px}
 
-  nav{display:flex; gap:0; border-bottom:1px solid var(--line); margin-bottom:24px; overflow-x:auto}
+  nav{display:flex; gap:0; border-bottom:1px solid var(--line); margin-bottom:24px;
+      overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none}
+  nav::-webkit-scrollbar{ display:none }
   nav button{
     background:transparent; border:none; border-bottom:2px solid transparent;
     color:var(--dim); padding:10px 14px; letter-spacing:1px;
+    white-space:nowrap; flex:0 0 auto;
   }
   nav button:hover{color:var(--fg)}
   nav button.active{color:var(--accent); border-bottom-color:var(--accent)}
@@ -61,6 +74,8 @@
     border:1px solid var(--line);
     background:var(--bg-2);
     padding:16px;
+    box-sizing:border-box;
+    width:100%;
   }
   .card h2{
     margin:0 0 12px 0; font-size:13px; letter-spacing:2px; color:var(--dim);
@@ -139,6 +154,9 @@
   .empty{color:var(--dim); font-style:italic; font-size:12px; padding:8px 0}
 
   .footer{margin-top:30px; padding-top:14px; border-top:1px solid var(--line); color:var(--dim); font-size:11px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px}
+  .footer a{color:var(--accent); text-decoration:none; border-bottom:1px dashed var(--accent)}
+  .footer a:hover{color:#7eff7e; border-bottom-color:#7eff7e}
+  .footer .credit{flex-basis:100%; text-align:center; padding-top:6px; opacity:.85}
 
   /* ===== Streaks bar ===== */
   .streak-bar{display:flex; gap:14px; flex-wrap:wrap; align-items:center; padding:10px 14px;
@@ -442,6 +460,110 @@
   .focus-overlay .fo-mini-panel .mp-ctl{display:flex; gap:4px; justify-content:flex-end}
   .focus-overlay .fo-mini-panel .mp-ctl button{padding:2px 8px; font-size:10px; letter-spacing:1px}
 
+  /* ===== Cloud sync button + status ===== */
+  .cloud-btn{
+    background:transparent; border:1px solid var(--line); color:var(--dim);
+    padding:6px 10px; font-size:11px; letter-spacing:2px; text-transform:uppercase;
+    display:flex; align-items:center; gap:6px;
+  }
+  .cloud-btn:hover{color:var(--accent); border-color:var(--accent)}
+  .cloud-btn.online{color:var(--accent); border-color:var(--accent)}
+  .cloud-btn.syncing{color:var(--yellow); border-color:var(--yellow)}
+  .cloud-btn.offline{color:var(--dim); border-color:var(--line)}
+  .cloud-dot{
+    width:6px; height:6px; border-radius:50%; background:var(--dim);
+    display:inline-block; flex:none;
+  }
+  .cloud-btn.online .cloud-dot{background:var(--accent); box-shadow:0 0 6px var(--accent)}
+  .cloud-btn.syncing .cloud-dot{background:var(--yellow); animation:pulse-dot 1s ease-in-out infinite}
+  .cloud-btn.error .cloud-dot{background:var(--warn)}
+  @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* ===== Auth overlay ===== */
+  .auth-overlay{
+    position:fixed; inset:0; z-index:80; background:rgba(10,10,10,0.94);
+    display:none; align-items:center; justify-content:center; padding:20px;
+  }
+  .auth-overlay.on{display:flex}
+  .auth-card{
+    width:100%; max-width:420px; border:1px solid var(--line); background:#000;
+    padding:28px 24px;
+  }
+  .auth-card h2{margin:0 0 4px}
+  .auth-card .auth-sub{color:var(--dim); font-size:11px; letter-spacing:2px; text-transform:uppercase; margin-bottom:18px}
+  .auth-card label{display:block; color:var(--dim); font-size:10px; letter-spacing:2px; text-transform:uppercase; margin-bottom:6px}
+  .auth-card input[type=email]{
+    width:100%; padding:10px 12px; font-size:14px; background:#000;
+    border:1px solid var(--line); color:var(--fg); margin-bottom:12px;
+  }
+  .auth-card input[type=email]:focus{outline:none; border-color:var(--accent)}
+  .auth-card .auth-actions{display:flex; gap:10px; margin-top:6px}
+  .auth-card .auth-actions .primary{flex:1}
+  .auth-card .auth-msg{
+    margin-top:14px; padding:10px 12px; border:1px solid var(--line);
+    color:var(--accent); font-size:11px; letter-spacing:1px;
+    display:none;
+  }
+  .auth-card .auth-msg.on{display:block}
+  .auth-card .auth-msg.error{color:var(--warn); border-color:var(--warn)}
+  .auth-card .auth-skip{
+    display:block; margin-top:18px; text-align:center;
+    color:var(--dim); font-size:10px; letter-spacing:2px; text-transform:uppercase;
+    background:transparent; border:none; width:100%;
+  }
+  .auth-card .auth-skip:hover{color:var(--accent)}
+  .auth-card .auth-info{
+    color:var(--dim); font-size:11px; line-height:1.5; margin-top:14px;
+    padding-top:12px; border-top:1px dashed var(--line);
+  }
+
+  /* reward burst — positive reinforcement after focus done */
+  .fo-reward{
+    position:fixed; inset:0; z-index:95; pointer-events:none;
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    opacity:0;
+  }
+  .fo-reward.on{animation:reward-fade .9s ease both}
+  .fo-reward .rw-mark{
+    font-size:160px; line-height:1; color:var(--accent);
+    text-shadow:0 0 40px var(--accent), 0 0 80px var(--accent);
+    animation:reward-mark .9s cubic-bezier(.2,.9,.3,1) both;
+  }
+  .fo-reward .rw-word{
+    font-size:14px; letter-spacing:8px; color:var(--accent); text-transform:uppercase;
+    margin-top:18px; opacity:0;
+    animation:reward-word .9s ease both;
+  }
+  .fo-reward .rw-streak{
+    margin-top:8px; font-size:11px; letter-spacing:3px; color:var(--dim); text-transform:uppercase;
+    opacity:0; animation:reward-word .9s ease .15s both;
+  }
+  @keyframes reward-mark{
+    0%{transform:scale(.2); opacity:0}
+    25%{transform:scale(1.25); opacity:1}
+    60%{transform:scale(1); opacity:1}
+    100%{transform:scale(1.05); opacity:0}
+  }
+  @keyframes reward-word{
+    0%{opacity:0; transform:translateY(8px)}
+    25%{opacity:1; transform:none}
+    80%{opacity:1}
+    100%{opacity:0}
+  }
+  @keyframes reward-fade{
+    0%{opacity:0} 10%{opacity:1} 80%{opacity:1} 100%{opacity:0}
+  }
+  /* radiating ring */
+  .fo-reward .rw-ring{
+    position:absolute; width:80px; height:80px; border-radius:50%;
+    border:2px solid var(--accent); opacity:0;
+    animation:reward-ring 1s ease-out both;
+  }
+  @keyframes reward-ring{
+    0%{transform:scale(.4); opacity:.9}
+    100%{transform:scale(8); opacity:0}
+  }
+
   /* ===== Intro micro-animation on load ===== */
   @keyframes intro-task{
     from{opacity:0; transform:translateY(8px)}
@@ -461,6 +583,186 @@
   body.intro-loading #tab-today > .grid.cols-2:first-of-type > .card:first-child{
     animation:intro-task .35s ease both;
   }
+
+  /* ============================================================
+     Cloud-first loading overlay — hides UI while we pull from cloud.
+  ============================================================ */
+  body.cloud-loading > .app{ visibility:hidden; }
+  body.cloud-loading::before{
+    content:"// SYNC...";
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    z-index:99; color:var(--accent); font:600 14px/1 ui-monospace,Menlo,Consolas,monospace;
+    letter-spacing:6px; background:var(--bg);
+  }
+
+  /* ============================================================
+     Mobile-first — iPhone 12/13/14 layout.
+     Targets ≤720px. The .app gets max-width:420px so all cards
+     share the same width on phones; no element "sticks out".
+     Tap targets ≥44px, safe-area aware, word-wrap everywhere.
+  ============================================================ */
+  html, body{ overflow-x:hidden; max-width:100vw; }
+  *, *::before, *::after{ min-width:0; }
+
+  @media (max-width:720px){
+    body{
+      padding-top:env(safe-area-inset-top, 0);
+      padding-bottom:env(safe-area-inset-bottom, 0);
+    }
+    .app{
+      max-width:420px; margin:0 auto; padding:16px 16px 32px 16px;
+      box-sizing:border-box;
+    }
+
+    /* Every direct block in the app shares the same content width.
+       This kills any "one card wider than another" inconsistency. */
+    .app > *,
+    .tab > *{
+      width:100%; max-width:100%; box-sizing:border-box;
+    }
+
+    /* Header — wraps, no overflow */
+    header{ flex-wrap:wrap; gap:12px; align-items:flex-start; }
+    header > div:first-child{ flex:1 1 100%; }
+    header .row{ flex-wrap:wrap; gap:8px; width:100%; }
+
+    /* Tabs — scroll horizontally if too many; brackets stay glued to label */
+    nav#nav{
+      display:flex !important; flex-wrap:nowrap !important; overflow-x:auto;
+      gap:4px; -webkit-overflow-scrolling:touch;
+      scrollbar-width:none; padding-bottom:4px;
+    }
+    nav#nav::-webkit-scrollbar{ display:none; }
+    nav#nav button{
+      flex:0 0 auto; white-space:nowrap;
+      padding:10px 10px; font-size:12px; letter-spacing:1px;
+    }
+
+    /* Grid → single column. Each card occupies full track width. */
+    .grid{ gap:14px; }
+    .grid.cols-2, .grid.cols-3{ grid-template-columns:1fr !important; }
+    .card{
+      padding:14px; box-sizing:border-box;
+      width:100%; max-width:100%; min-width:0;
+    }
+    .card h2{ font-size:12px; flex-wrap:wrap; gap:8px; }
+
+    /* Streak / week-goal banners — same width as cards */
+    .streak-bar, .week-goal-banner{
+      width:100%; box-sizing:border-box; margin-bottom:14px;
+    }
+
+    /* Tap targets: 44px minimum (Apple HIG) */
+    button, input, select, textarea{
+      min-height:44px; font-size:14px;
+      box-sizing:border-box;
+    }
+    /* Tiny inline buttons (×, drag handle, ▲▼) keep their compact size */
+    .task .x, .reorder-btns button, button.x,
+    .pomo-phase .ph, .focus-toggle{ min-height:0; }
+
+    .row{ flex-wrap:wrap; gap:8px; }
+    .row > input, .row > select, .row > textarea{ flex:1 1 100%; min-width:0; }
+    .row > button{ flex:0 0 auto; }
+
+    /* Add-forms (новая задача / новая привычка / новый supps) — wrap.
+       Each input on its own row, button compact. */
+    .add-form{ flex-wrap:wrap; gap:8px; }
+    .add-form > input,
+    .add-form > select{
+      flex:1 1 100%; min-width:0; max-width:100% !important;
+    }
+    .add-form > input[type="number"]{ flex:0 0 80px; }
+    .add-form > button{ flex:0 0 auto; padding:0 18px; }
+
+    /* State sliders — vertical layout for tight screens */
+    .slider-row{ grid-template-columns:1fr 30px; }
+    .slider-row label{ grid-column:1 / -1; }
+    .slider-row input[type="range"]{ grid-column:1; }
+    .slider-row .val{ grid-column:2; }
+
+    /* Word-wrap everywhere, no compressed sideways text */
+    .card h2, .card p, .card div, .task .text, .auth-card, label{
+      overflow-wrap:anywhere; word-break:break-word;
+    }
+
+    /* Pomodoro digits — fit width comfortably */
+    .timer-display, #timerDisplay{
+      font-size:56px !important; letter-spacing:2px !important;
+    }
+
+    /* Tasks: drop drag handle on touch, show up/down buttons.
+       Each task is one row, wraps if long. Min 44px tall via .task padding. */
+    .drag-handle{ display:none !important; }
+    .reorder-btns{
+      display:flex !important; flex-direction:column; gap:1px; flex:none;
+      align-self:center;
+    }
+    .reorder-btns button{
+      width:22px; height:16px; padding:0; font-size:10px; line-height:1;
+      border:none; background:transparent; color:var(--dim);
+      min-height:0;
+    }
+    .reorder-btns button:disabled{ opacity:.25; }
+    .reorder-btns button:hover:not(:disabled),
+    .reorder-btns button:active:not(:disabled){ color:var(--accent); }
+
+    .task{ gap:8px; padding:10px 8px; flex-wrap:wrap; }
+    .task .text{ flex:1 1 auto; min-width:0; }
+    .task .x{ width:32px; height:32px; }
+
+    /* Sliders — easier to grab on touch */
+    input[type="range"]{ height:32px; }
+
+    /* Focus overlay — full viewport, safe-area aware, no scroll */
+    .focus-overlay{
+      padding:18px;
+      padding-top:calc(env(safe-area-inset-top, 0px) + 18px);
+      padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 18px);
+      height:100dvh; min-height:100dvh; overflow:hidden;
+      align-items:center; justify-content:center;
+    }
+    .focus-overlay .fo-stage{ width:100%; max-width:360px; }
+    .focus-overlay .fo-text{ font-size:24px; margin-bottom:24px; line-height:1.4; }
+    .focus-overlay .fo-done{
+      padding:14px 22px; font-size:13px; letter-spacing:2px;
+      width:100%; max-width:280px;
+    }
+    .focus-overlay .fo-mini{ top:14px; right:14px; }
+    .focus-overlay .fo-mini-toggle{ width:36px; height:36px; }
+    .focus-overlay .fo-exit{ font-size:11px; }
+
+    /* Day modal & auth modal — full width, scrollable */
+    .modal{
+      width:96vw !important; max-width:96vw !important;
+      max-height:90dvh; overflow:auto; padding:16px !important;
+      box-sizing:border-box;
+    }
+    .auth-card{
+      width:96vw; max-width:96vw; padding:20px 16px;
+      box-sizing:border-box;
+    }
+
+    /* Footer — wrap */
+    .footer{
+      flex-direction:column; align-items:flex-start; gap:6px;
+      padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 8px);
+    }
+
+    /* Header buttons compact but legible */
+    .cloud-btn, .danger{ padding:8px 10px; font-size:11px; min-height:36px; }
+
+    /* Habits / supps inputs row */
+    select{ background-position:right 8px center; padding-right:24px; }
+
+    /* Loading overlay smaller text on mobile */
+    body.cloud-loading::before{ font-size:13px; letter-spacing:4px; }
+  }
+
+  /* Hide reorder buttons on desktop (they're added unconditionally by JS) */
+  @media (min-width:721px){
+    .reorder-btns{ display:none !important; }
+  }
 </style>
 </head>
 <body class="intro-loading">
@@ -471,13 +773,16 @@
       <div class="meta" id="metaLine">— загрузка —</div>
     </div>
     <div class="row">
+      <button id="cloudBtn" class="cloud-btn" title="облачная синхронизация">
+        <span class="cloud-dot" id="cloudDot"></span><span id="cloudLabel">войти</span>
+      </button>
       <button id="antiIllusionBtn" class="danger">// АНТИ-ИЛЛЮЗИЯ</button>
     </div>
   </header>
 
   <nav id="nav">
     <button data-tab="today" class="active">[ СЕГОДНЯ ]</button>
-    <button data-tab="week">[ НЕДЕЛЯ ]</button>
+    <button data-tab="week">[ КАЛЕНДАРЬ ]</button>
     <button data-tab="state">[ СОСТОЯНИЕ ]</button>
     <button data-tab="goals">[ ЦЕЛИ ]</button>
     <button data-tab="settings">[ . ]</button>
@@ -618,16 +923,6 @@
       </div>
     </div>
 
-    <div class="card" style="margin-top:18px">
-      <h2>Еженедельные ритуалы</h2>
-      <div id="weekTasks"></div>
-      <div class="add-form">
-        <input id="newWeekTaskText" placeholder="что делаю раз в неделю (обзор, уборка, финансы)..."/>
-        <select id="newWeekTaskGoal"><option value="">без цели</option></select>
-        <button class="primary" id="addWeekTaskBtn">+ ADD</button>
-      </div>
-      <div class="muted small" style="margin-top:8px">Чеклист сбрасывается каждый понедельник. Сами задачи остаются.</div>
-    </div>
   </section>
 
   <!-- ============== STATE ============== -->
@@ -706,8 +1001,9 @@
   </section>
 
   <div class="footer">
-    <div>FOCUS_OS v1 · локально · без аккаунтов</div>
+    <div>FOCUS_OS v1 · локально + облако (опционально)</div>
     <div id="footerStats"></div>
+    <div class="credit">автор: <a href="https://t.me/Human2pt0" target="_blank" rel="noopener noreferrer">Человек, но лучше</a> <a href="https://t.me/Human2pt0" target="_blank" rel="noopener noreferrer" class="credit-tg">(тгк)</a></div>
   </div>
 </div>
 
@@ -729,6 +1025,45 @@
     <h3 id="dayModalTitle">—</h3>
     <div class="modal-date" id="dayModalDate">—</div>
     <div id="dayModalBody"></div>
+  </div>
+</div>
+
+<!-- ============== AUTH OVERLAY ============== -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card">
+    <h2>облако</h2>
+    <div class="auth-sub">синхронизация между устройствами</div>
+
+    <div id="authSignedOut">
+      <label for="authEmail">email</label>
+      <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email" inputmode="email" />
+      <div class="auth-actions">
+        <button class="primary" id="authSendLink">получить ссылку</button>
+      </div>
+      <div class="auth-msg" id="authMsg"></div>
+      <div class="auth-info">
+        Magic link: пришлём письмо с ссылкой, кликаешь — входишь. Без паролей. Данные привязываются к email и доступны со всех устройств.
+      </div>
+      <button class="auth-skip" id="authSkip">— продолжить без аккаунта —</button>
+    </div>
+
+    <div id="authSignedIn" style="display:none">
+      <div style="color:var(--accent); font-size:13px; margin-bottom:4px">вошли как <span id="authEmailShown"></span></div>
+      <div class="muted small" style="margin-bottom:14px">данные синхронизируются автоматически</div>
+
+      <label for="authUsername">ник</label>
+      <div class="row" style="gap:6px; align-items:stretch">
+        <input type="text" id="authUsername" placeholder="как тебя называть" maxlength="32" autocomplete="off" style="flex:1 1 auto" />
+        <button id="authUsernameSave" class="primary" type="button" style="flex:0 0 auto">сохранить</button>
+      </div>
+      <div class="muted small" style="margin:6px 0 14px 0">отображается в шапке. синхронизируется со всеми устройствами.</div>
+
+      <div class="auth-actions">
+        <button id="authSignOut">выйти</button>
+      </div>
+      <div class="auth-msg" id="authMsg2"></div>
+      <button class="auth-skip" id="authClose">закрыть</button>
+    </div>
   </div>
 </div>
 
@@ -760,6 +1095,26 @@
 ========================================================= */
 
 const STORAGE_KEY = "focus_os_v1";
+
+/* ===== Cloud sync config (Supabase) =====
+   Fill these in to enable cross-device sync. Both values are PUBLIC and safe
+   to commit — Postgres Row Level Security policies guard the actual data so
+   each user can only read/write their own row. Leave blank for offline-only. */
+const SUPABASE_URL      = "https://bgxdkojcbyrjhemfayvi.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJneGRrb2pjYnlyamhlbWZheXZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MDM5MjksImV4cCI6MjA5MzQ3OTkyOX0.AYHfFG0Clah7kqqEm3Na7Qm3EDWEqPBMEUFc1huEP7c";
+
+/* Email allowlist. Only these addresses can sign in. Empty array = no
+   restriction. Matched case-insensitively. */
+const ALLOWED_EMAILS = [
+  "a006600363@gmail.com",
+  "g.ro.m@mail.com",
+  "anya.sazonova13.08@icloud.com"
+];
+function isAllowedEmail(email){
+  if (!ALLOWED_EMAILS.length) return true;
+  const e = (email || "").trim().toLowerCase();
+  return ALLOWED_EMAILS.some(a => a.toLowerCase() === e);
+}
 
 const TASK_LIMIT = 5;
 const GOAL_LIMIT = 5;
@@ -811,6 +1166,7 @@ function emptyState(){
     timer: { work: 25, short: 5, long: 15, cyclesBeforeLong: 4 },
     lastSeen: null,
     focusMode: false,
+    profile: { username: "" },
   };
 }
 
@@ -869,11 +1225,18 @@ function migrate(st){
   if (typeof st.timer.short !== "number") st.timer.short = 5;
   if (typeof st.timer.long !== "number") st.timer.long = 15;
   if (typeof st.timer.cyclesBeforeLong !== "number") st.timer.cyclesBeforeLong = 4;
+  // profile (username for cloud-synced display name)
+  if (!st.profile || typeof st.profile !== "object") st.profile = { username: "" };
+  if (typeof st.profile.username !== "string") st.profile.username = "";
   return st;
 }
 
 function save(){
+  S._updatedAt = Date.now();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
+  console.log("[save] local cache updated, _updatedAt=", S._updatedAt,
+              "tasks=", (S.tasks||[]).length, "habits=", (S.habits||[]).length);
+  if (typeof cloudPushSoon === "function") cloudPushSoon();
 }
 
 /* ---------- utils ---------- */
@@ -1035,11 +1398,18 @@ let revealCompletedDay = false;
 
 function renderTaskRow(t, isDragArea){
   const goal = S.goals.find(g=>g.id===t.goalId);
+  // Drag handle for desktop, up/down buttons for touch (CSS shows one or the other).
   const drag = isDragArea
     ? `<span class="drag-handle" title="перетащи для порядка" draggable="true">⋮⋮</span>`
     : '';
+  const reorder = isDragArea
+    ? `<span class="reorder-btns" aria-label="порядок">
+         <button data-move-up="${t.id}" title="выше">▲</button>
+         <button data-move-down="${t.id}" title="ниже">▼</button>
+       </span>`
+    : '';
   return `<div class="task ${t.done?'done':''}" data-row="task-${t.id}" data-task-id="${t.id}">
-    ${drag}
+    ${drag}${reorder}
     <input type="checkbox" data-task="${t.id}" ${t.done?'checked':''}/>
     <div class="text">${escapeHtml(t.text)}</div>
     ${goal?`<span class="goal-tag">→ ${escapeHtml(goal.title)}</span>`:''}
@@ -1298,12 +1668,12 @@ document.getElementById("todayTasks").addEventListener("click", e=>{
       save();
       if (t.done){
         popEl(cb); pulseRow("task-"+id); confettiAt(cb); toast();
-        // keep task in pending area for 2s, then slide down to completed list
+        // keep task in pending area briefly, then slide down to completed list
         clearTaskSlide(id);
         taskSlideTimers[id] = setTimeout(()=>{
           delete taskSlideTimers[id];
           flipRender("#todayTasks", ()=>renderToday());
-        }, 2000);
+        }, 500);
         // immediate render (task stays in place visually, marked done)
         renderToday();
         // dim the just-checked row to signal it's leaving soon
@@ -1329,8 +1699,37 @@ document.getElementById("todayTasks").addEventListener("click", e=>{
     clearTaskSlide(id);
     S.tasks = S.tasks.filter(t=>t.id!==id);
     save(); renderToday();
+    return;
+  }
+  // Touch-friendly reorder buttons (visible on mobile)
+  const up = e.target.closest("[data-move-up]");
+  const dn = e.target.closest("[data-move-down]");
+  if (up || dn){
+    const id = (up || dn).dataset[up ? "moveUp" : "moveDown"];
+    moveTaskInPending(id, up ? -1 : +1);
+    return;
   }
 });
+
+/* Move a pending task up/down within the list of pending tasks only.
+   We map index in S.tasks → the position among pending items so the move
+   feels natural even when done items are interleaved in storage order. */
+function moveTaskInPending(id, dir){
+  const pending = S.tasks.filter(t => !t.done);
+  const idxAmongPending = pending.findIndex(t => t.id === id);
+  if (idxAmongPending < 0) return;
+  const targetAmongPending = idxAmongPending + dir;
+  if (targetAmongPending < 0 || targetAmongPending >= pending.length) return;
+  // swap positions of these two tasks inside S.tasks
+  const a = pending[idxAmongPending];
+  const b = pending[targetAmongPending];
+  const ai = S.tasks.indexOf(a);
+  const bi = S.tasks.indexOf(b);
+  if (ai < 0 || bi < 0) return;
+  S.tasks[ai] = b; S.tasks[bi] = a;
+  save();
+  flipRender("#todayTasks", ()=>renderToday());
+}
 
 /* ----- Drag & drop reorder for pending tasks ----- */
 let dragState = null; // {id, fromEl}
@@ -1725,50 +2124,7 @@ function renderWeek(){
     tbl.innerHTML = head + rows;
   }
 
-  // ===== Weekly rituals (existing weekTasks) =====
-  const list = document.getElementById("weekTasks");
-  if (!S.weekTasks.length){
-    list.innerHTML = `<div class="empty">еженедельные ритуалы: уборка, обзор недели, разбор финансов...</div>`;
-  } else {
-    list.innerHTML = S.weekTasks.map(t=>{
-      const done = t.doneWeekKey === wk;
-      const goal = S.goals.find(g=>g.id===t.goalId);
-      return `<div class="task ${done?'done':''}" data-row="wt-${t.id}">
-        <input type="checkbox" data-week="${t.id}" ${done?'checked':''}/>
-        <div class="text">${escapeHtml(t.text)}</div>
-        ${goal?`<span class="goal-tag">→ ${escapeHtml(goal.title)}</span>`:''}
-        <button class="x" data-del-week="${t.id}">×</button>
-      </div>`;
-    }).join("");
-  }
 }
-document.getElementById("addWeekTaskBtn").addEventListener("click", ()=>{
-  const inp = document.getElementById("newWeekTaskText");
-  const sel = document.getElementById("newWeekTaskGoal");
-  const text = inp.value.trim(); if (!text) return;
-  S.weekTasks.push({id:uid(), text, doneWeekKey:null, goalId: sel.value||null});
-  inp.value=""; save(); renderWeek();
-});
-document.getElementById("newWeekTaskText").addEventListener("keydown",e=>{
-  if (e.key==="Enter") document.getElementById("addWeekTaskBtn").click();
-});
-document.getElementById("weekTasks").addEventListener("click", e=>{
-  const cb = e.target.closest("input[type=checkbox][data-week]");
-  if (cb){
-    const t = S.weekTasks.find(x=>x.id===cb.dataset.week);
-    if (t){
-      t.doneWeekKey = cb.checked ? weekKey() : null;
-      save();
-      if (cb.checked){ popEl(cb); pulseRow("wt-"+t.id); confettiAt(cb); toast(); }
-      renderWeek();
-    }
-  }
-  const x = e.target.closest("[data-del-week]");
-  if (x){
-    S.weekTasks = S.weekTasks.filter(t=>t.id!==x.dataset.delWeek);
-    save(); renderWeek();
-  }
-});
 
 /* ============================================================
    CHARTS
@@ -1837,16 +2193,39 @@ function renderCharts(){
     }
   });
 
-  // History
+  // History — unified list of days with any data, clickable to open the day modal
   const histList = document.getElementById("historyList");
-  const recent = Object.keys(S.metricsLog).sort().reverse().slice(0,30);
-  if (!recent.length){ histList.innerHTML = `<div class="empty">пока нет записей</div>`; return; }
+  const dateSet = new Set();
+  Object.keys(S.metricsLog || {}).forEach(d=>dateSet.add(d));
+  S.tasks.forEach(t=>{ if (t.date) dateSet.add(t.date); });
+  S.habits.forEach(h=>{ Object.keys(h.history||{}).forEach(d=>dateSet.add(d)); });
+  S.supps.forEach(s=>{ Object.keys(s.history||{}).forEach(d=>dateSet.add(d)); });
+  const recent = [...dateSet].sort().reverse().slice(0, 60);
+  if (!recent.length){
+    histList.innerHTML = `<div class="empty">пока нет записей — данные появятся после первого закрытого дня</div>`;
+    return;
+  }
   histList.innerHTML = recent.map(d=>{
-    const rec = S.metricsLog[d];
-    const parts = S.metrics.map(m => rec[m.id] != null ? `${m.name.slice(0,3)}:${rec[m.id]}` : null).filter(Boolean).join("  ");
-    return `<div class="task"><div class="text">${fmtDate(d)}</div><div class="muted small">${parts}</div></div>`;
+    const tasks = S.tasks.filter(t=>t.date===d);
+    const tasksDone = tasks.filter(t=>t.done).length;
+    const habitsDone = S.habits.filter(h=>h.history?.[d]).length;
+    const rec = S.metricsLog[d] || {};
+    const metricsCount = S.metrics.filter(m => rec[m.id] != null).length;
+    const st = dayStatus(d);
+    const stColor = {done:"var(--accent)", partial:"var(--yellow)", fail:"var(--warn)"}[st] || "var(--dim)";
+    const stMark = {done:"●", partial:"◐", fail:"○"}[st] || "·";
+    return `<div class="task" data-hist-day="${d}" style="cursor:pointer">
+      <span style="color:${stColor}; font-size:14px; min-width:14px">${stMark}</span>
+      <div class="text">${fmtDate(d)}</div>
+      <div class="muted small" style="white-space:nowrap">задачи ${tasksDone}/${tasks.length}  ·  привычки ${habitsDone}  ·  метрики ${metricsCount}/${S.metrics.length}</div>
+    </div>`;
   }).join("");
 }
+
+document.getElementById("historyList")?.addEventListener("click", e=>{
+  const row = e.target.closest("[data-hist-day]");
+  if (row) openDayModal(row.dataset.histDay);
+});
 
 /* ============================================================
    MINI CALENDAR (внутри WEEK)
@@ -2447,6 +2826,28 @@ function exitFocus(){
   renderToday();
 }
 
+/* Reward animation — positive reinforcement after a task is completed
+   inside Focus Mode. Big check + random victory word + completion count.
+   ~900ms total before advancing to the next task. */
+const REWARD_WORDS = ["да", "плюс", "движение", "хорошо", "ещё", "класс", "так держать", "+1", "точно"];
+function fireReward(){
+  const tt = todaysTasks();
+  const doneCount = tt.filter(t => t.done).length;
+  const total = tt.length;
+  const word = REWARD_WORDS[Math.floor(Math.random()*REWARD_WORDS.length)];
+  const el = document.createElement("div");
+  el.className = "fo-reward on";
+  el.innerHTML = `
+    <div class="rw-ring"></div>
+    <div class="rw-mark">✓</div>
+    <div class="rw-word">${word}</div>
+    <div class="rw-streak">сделано · ${doneCount}/${total}</div>
+  `;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 1000);
+  confettiAt(el);
+}
+
 focusOverlay.addEventListener("click", e=>{
   const done = e.target.closest("[data-fo-done]");
   if (done){
@@ -2454,17 +2855,18 @@ focusOverlay.addEventListener("click", e=>{
     const t = S.tasks.find(x=>x.id===id);
     if (!t) return;
     t.done = true; save();
-    confettiAt(done); toast();
-    // brief flash, then advance to next pending task (or empty state)
+    fireReward();
+    toast();
+    // give the reward a beat, then advance to next pending task (or empty state)
     setTimeout(()=>{
       const next = focusVisibleTask();
       if (!next){
-        // all tasks done — exit focus naturally
+        // all tasks done — exit focus naturally (after the reward shows)
         exitFocus();
         return;
       }
       renderFocusStage();
-    }, 350);
+    }, 850);
     return;
   }
   if (e.target.closest("[data-fo-exit]")){
@@ -2494,15 +2896,615 @@ document.getElementById("mpPause")?.addEventListener("click", pauseTimer);
 document.getElementById("mpReset")?.addEventListener("click", resetTimer);
 
 /* ============================================================
+   CLOUD SYNC — Supabase   (cloud-first model)
+   - Supabase = source of truth. localStorage = cache only.
+   - On boot: if there's a session, pull cloud BEFORE rendering UI.
+   - lastSyncStamp tracks the last cloud-confirmed _updatedAt:
+     • cloudPushSoon refuses to push when S._updatedAt <= lastSyncStamp
+       (prevents stale pre-login data from overwriting cloud)
+     • after a successful push, lastSyncStamp = pushed stamp
+     • after a successful pull, lastSyncStamp = cloud _updatedAt
+   - Realtime applies updates whose _updatedAt is strictly newer than
+     local; own echoes are filtered by lastPushedUpdatedAt.
+   - No manual "pull" button — sync is fully automatic.
+   - Logging at every step (search "[cloud]" or "[save]" in console).
+============================================================ */
+let sb = null;
+let cloudUser = null;
+let cloudPushTimer = null;
+let cloudPushInFlight = false;
+let cloudPushPending = false;
+let cloudChannel = null;
+let lastPushedUpdatedAt = 0;   // echo filter for realtime
+let lastSyncStamp = 0;         // _updatedAt of the last cloud-confirmed state
+let cloudInitDone = false;     // becomes true after first init pass (auto-pushes allowed)
+let cloudLoadingResolve = null;
+const cloudLoadingPromise = new Promise(r => { cloudLoadingResolve = r; });
+
+const CLOUD_DEBOUNCE_MS = 400;
+
+function cloudConfigured(){ return !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase); }
+function cloudReady(){ return !!sb && !!cloudUser; }
+
+function displayName(){
+  const u = (S.profile && S.profile.username) ? S.profile.username.trim() : "";
+  if (u) return u;
+  const email = cloudUser?.email || "";
+  if (!email) return "";
+  const at = email.indexOf("@");
+  return at > 0 ? email.slice(0, at) : email;
+}
+
+function setCloudStatus(state, label){
+  const btn = document.getElementById("cloudBtn");
+  const lbl = document.getElementById("cloudLabel");
+  if (!btn) return;
+  btn.classList.remove("online","syncing","offline","error");
+  btn.classList.add(state);
+  if (label !== undefined && lbl) lbl.textContent = label;
+}
+
+/* Re-render everything visible after a cloud pull replaces state. */
+function renderAll(){
+  try {
+    renderToday();
+    if (typeof renderHabits === "function") renderHabits();
+    if (typeof renderSupps === "function") renderSupps();
+    if (typeof renderMetrics === "function") renderMetrics();
+    if (typeof renderGoals === "function") renderGoals();
+    if (typeof renderWeek === "function") renderWeek();
+    if (typeof renderMiniCal === "function") renderMiniCal();
+    if (typeof renderStreakBar === "function") renderStreakBar();
+    if (typeof renderCharts === "function") renderCharts();
+  } catch (e) { console.warn("[cloud] renderAll partial fail:", e); }
+}
+
+/* Replace every key of S with the cloud-provided state, normalised through
+   emptyState() defaults and migrate(). Then save to localStorage cache. */
+function applyCloudState(remoteState, remoteUpdatedAt){
+  const before = JSON.stringify({tasks:S.tasks?.length, habits:S.habits?.length,
+                                  goals:S.goals?.length, _updatedAt:S._updatedAt});
+  console.log("[cloud] applying remote state, _updatedAt=", remoteUpdatedAt,
+              "keys:", Object.keys(remoteState||{}), "before:", before);
+  const merged = migrate(Object.assign(emptyState(), remoteState || {}));
+  Object.keys(S).forEach(k => { delete S[k]; });
+  Object.assign(S, merged);
+  S._updatedAt = remoteUpdatedAt;
+  lastSyncStamp = remoteUpdatedAt;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
+  renderAll();
+  console.log("[cloud] applied. now: tasks=", S.tasks?.length, "habits=", S.habits?.length,
+              "goals=", S.goals?.length);
+}
+
+async function cloudInit(){
+  if (!cloudConfigured()){
+    console.log("[cloud] not configured — local-only");
+    setCloudStatus("offline", "локально");
+    cloudInitDone = true;
+    cloudLoadingResolve();
+    return;
+  }
+  console.log("[cloud] init, url=", SUPABASE_URL);
+  try {
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+  } catch (e){
+    console.warn("[cloud] supabase init failed:", e);
+    setCloudStatus("error", "ошибка");
+    cloudInitDone = true;
+    cloudLoadingResolve();
+    return;
+  }
+
+  // Auth state listener — handles magic-link sign-in and sign-out.
+  sb.auth.onAuthStateChange(async (event, session) => {
+    console.log("[cloud] auth event:", event, "user:", session?.user?.email || null);
+    if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session){
+      // Enforce allowlist defense-in-depth.
+      if (!isAllowedEmail(session.user?.email)){
+        console.warn("[cloud] email not allowed, signing out:", session.user?.email);
+        try { await sb.auth.signOut(); } catch(_){}
+        toast("этот email не в whitelist'е");
+        return;
+      }
+      // Push the JWT to the realtime client. supabase-js v2 should do this
+      // automatically but in some versions it lags behind, which causes
+      // realtime postgres_changes channels to flap SUBSCRIBED→CLOSED.
+      try { sb.realtime.setAuth(session.access_token); } catch(_){}
+      const wasNewLogin = !cloudUser;
+      cloudUser = session.user;
+      if (wasNewLogin){
+        setCloudStatus("syncing", displayName());
+        await cloudPull();
+        setCloudStatus("online", displayName());
+        cloudSubscribe();
+        startCloudPolling();
+        hideAuthOverlay();
+        toast("вошли · данные подгружены");
+      }
+    } else if (event === "SIGNED_OUT"){
+      cloudUser = null;
+      if (cloudChannel){ try { sb.removeChannel(cloudChannel); } catch(_){} cloudChannel = null; }
+      if (cloudPollTimer){ clearInterval(cloudPollTimer); cloudPollTimer = null; }
+      lastSyncStamp = 0;
+      setCloudStatus("offline", "войти");
+    }
+  });
+
+  // detectSessionInUrl auto-applies hash fragment from magic-link redirect.
+  try {
+    const { data } = await sb.auth.getSession();
+    if (data?.session){
+      const email = data.session.user?.email;
+      if (!isAllowedEmail(email)){
+        console.warn("[cloud] existing session not allowed, signing out:", email);
+        try { await sb.auth.signOut(); } catch(_){}
+        setCloudStatus("offline", "войти");
+        toast("этот email не в whitelist'е");
+      } else {
+        cloudUser = data.session.user;
+        console.log("[cloud] existing session:", cloudUser.email);
+        try { sb.realtime.setAuth(data.session.access_token); } catch(_){}
+        setCloudStatus("syncing", displayName());
+        await cloudPull();
+        setCloudStatus("online", displayName());
+        cloudSubscribe();
+        startCloudPolling();
+      }
+    } else {
+      console.log("[cloud] no session");
+      setCloudStatus("offline", "войти");
+    }
+  } catch (e){
+    console.warn("[cloud] getSession failed:", e);
+    setCloudStatus("offline", "войти");
+  }
+  cloudInitDone = true;
+  cloudLoadingResolve();
+}
+
+/* Race a promise against a hard timeout so a hung network never freezes UI. */
+function withTimeout(promise, ms, label){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(
+      () => reject(new Error("timeout " + (label || "") + " " + ms + "ms")),
+      ms
+    ))
+  ]);
+}
+
+/* Cloud always wins on pull. Cache replaced with cloud state. */
+async function cloudPull(){
+  if (!cloudReady()){ console.log("[cloud] pull skipped, not ready"); return; }
+  console.log("[cloud] pulling for user:", cloudUser.email);
+  try {
+    const result = await withTimeout(
+      sb.from("user_data")
+        .select("state, updated_at")
+        .eq("user_id", cloudUser.id)
+        .maybeSingle(),
+      8000,
+      "pull"
+    );
+    const { data, error } = result;
+    if (error) throw error;
+
+    if (!data){
+      // First-ever sign-in: cloud is empty, seed from local. This is the
+      // ONLY situation where local data goes up without a prior cloud
+      // version to compare against.
+      console.log("[cloud] no row yet — seeding cloud from local");
+      await cloudPushNow(true /*seed*/);
+      return;
+    }
+    const cloudState   = data.state || {};
+    const cloudUpdated = cloudState._updatedAt || new Date(data.updated_at).getTime();
+    console.log("[cloud] pull ok, cloud._updatedAt=", cloudUpdated,
+                "local._updatedAt=", S._updatedAt || 0,
+                "→ cloud wins (always)");
+    applyCloudState(cloudState, cloudUpdated);
+  } catch (e){
+    console.warn("[cloud] pull failed:", e?.message || e);
+    setCloudStatus("error", "ошибка");
+  }
+}
+
+/* Schedule a debounced push. No-op unless we have something genuinely new. */
+function cloudPushSoon(){
+  if (!cloudReady()) return;
+  if (!cloudInitDone){
+    console.log("[cloud] push deferred — init not done yet");
+    return;
+  }
+  if ((S._updatedAt || 0) <= lastSyncStamp){
+    console.log("[cloud] push skipped — local not newer than lastSyncStamp",
+                S._updatedAt, "<=", lastSyncStamp);
+    return;
+  }
+  if (cloudPushTimer) clearTimeout(cloudPushTimer);
+  cloudPushTimer = setTimeout(()=>cloudPushNow(false), CLOUD_DEBOUNCE_MS);
+}
+
+/* Actually upload local state.
+   seed=true bypasses lastSyncStamp / cloudInitDone (used to seed an empty
+   cloud row at first sign-in). */
+async function cloudPushNow(seed){
+  if (!cloudReady()){ console.log("[cloud] push skipped, not ready"); return; }
+  if (!seed && (S._updatedAt || 0) <= lastSyncStamp){
+    console.log("[cloud] push skipped (not newer)", S._updatedAt, "<=", lastSyncStamp);
+    return;
+  }
+  if (cloudPushInFlight){ cloudPushPending = true; return; }
+  cloudPushInFlight = true;
+  setCloudStatus("syncing", displayName());
+  const stamp = Date.now();
+  if ((S._updatedAt || 0) < stamp) S._updatedAt = stamp; // monotone
+  lastPushedUpdatedAt = S._updatedAt;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
+  const size = JSON.stringify(S).length;
+  console.log("[cloud] pushing _updatedAt=", S._updatedAt, "size=", size, "bytes",
+              "tasks=", S.tasks?.length, "habits=", S.habits?.length,
+              "username=", S.profile?.username || "(none)");
+  try {
+    const { error } = await withTimeout(
+      sb.from("user_data").upsert({
+        user_id: cloudUser.id,
+        state: S,
+        updated_at: new Date(S._updatedAt).toISOString()
+      }, { onConflict: "user_id" }),
+      8000,
+      "push"
+    );
+    if (error) throw error;
+    lastSyncStamp = S._updatedAt;
+    console.log("[cloud] push ok, lastSyncStamp =", lastSyncStamp);
+    setCloudStatus("online", displayName());
+  } catch (e){
+    console.warn("[cloud] push failed:", e?.message || e);
+    setCloudStatus("error", "ошибка");
+  } finally {
+    cloudPushInFlight = false;
+    if (cloudPushPending){
+      cloudPushPending = false;
+      cloudPushSoon();
+    }
+  }
+}
+
+function cloudSubscribe(){
+  if (!cloudReady()) return;
+  if (cloudChannel){ try { sb.removeChannel(cloudChannel); } catch(_){} cloudChannel = null; }
+  console.log("[cloud] subscribing realtime for user_id=", cloudUser.id);
+  cloudChannel = sb.channel("focus_os_user_data_" + cloudUser.id.slice(0,8))
+    .on("postgres_changes",
+      { event: "*", schema: "public", table: "user_data", filter: `user_id=eq.${cloudUser.id}` },
+      (payload) => {
+        const state = payload.new?.state;
+        if (!state){ console.log("[cloud] realtime: empty payload, skip"); return; }
+        const cloudUpdated = state._updatedAt || (payload.new.updated_at ? new Date(payload.new.updated_at).getTime() : 0);
+        if (cloudUpdated && cloudUpdated === lastPushedUpdatedAt){
+          console.log("[cloud] realtime: own echo, skip");
+          return;
+        }
+        const localUpdated = S._updatedAt || 0;
+        console.log("[cloud] realtime msg cloud._updatedAt=", cloudUpdated,
+                    "local._updatedAt=", localUpdated);
+        if (cloudUpdated > localUpdated){
+          applyCloudState(state, cloudUpdated);
+          toast("обновлено с другого устройства");
+        } else {
+          console.log("[cloud] realtime: cloud not newer, skip");
+        }
+      })
+    .subscribe(status => {
+      console.log("[cloud] realtime status:", status);
+      // Realtime is an optimisation, not a hard requirement. If it drops we
+      // schedule a reconnect and keep relying on the 30s safety pull, but we
+      // do NOT flip the main status pill — that pill should reflect actual
+      // data sync, not the realtime websocket. Otherwise a flaky realtime
+      // makes the pill blink "syncing" forever.
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED"){
+        // Try to re-subscribe with backoff to avoid spamming the WS endpoint
+        // when something at the server side keeps closing us (typically RLS
+        // missing). Backs off up to 30s.
+        cloudRealtimeBackoff = Math.min((cloudRealtimeBackoff || 5000) * 2, 30000);
+        console.log("[cloud] realtime reconnect in", cloudRealtimeBackoff, "ms");
+        setTimeout(() => {
+          if (cloudReady()) cloudSubscribe();
+        }, cloudRealtimeBackoff);
+      } else if (status === "SUBSCRIBED"){
+        // Reset backoff on successful subscribe.
+        cloudRealtimeBackoff = 5000;
+      }
+    });
+}
+
+/* Refresh from cloud immediately. Idempotent — safe to call any time.
+   Throttled so a flurry of focus/visibility events fires at most once per ~3s. */
+let cloudRefreshLastAt = 0;
+let cloudRefreshInFlight = false;
+async function cloudRefresh(reason, force){
+  if (!cloudReady()){ return; }
+  const now = Date.now();
+  if (!force && (now - cloudRefreshLastAt < 3000 || cloudRefreshInFlight)){
+    console.log("[cloud] refresh throttled (" + reason + ")");
+    return;
+  }
+  cloudRefreshLastAt = now;
+  cloudRefreshInFlight = true;
+  console.log("[cloud] refresh:", reason || "manual");
+  try {
+    setCloudStatus("syncing", displayName());
+    await cloudPull();
+    setCloudStatus("online", displayName());
+  } catch (e){
+    console.warn("[cloud] refresh failed:", e);
+  } finally {
+    cloudRefreshInFlight = false;
+  }
+}
+
+/* Wake-up handlers — when the tab/PWA returns to focus or network comes back,
+   we pull the latest cloud state immediately and re-subscribe realtime if it
+   was lost while in the background (this is the main fix for "iPhone is slow
+   to sync after the app was closed for a while"). */
+let cloudPollTimer = null;
+let cloudRealtimeBackoff = 5000;
+function startCloudPolling(){
+  if (cloudPollTimer) clearInterval(cloudPollTimer);
+  // Periodic safety net in case realtime is broken or the tab missed events.
+  cloudPollTimer = setInterval(() => {
+    if (cloudReady() && !document.hidden){
+      cloudRefresh("interval");
+    }
+  }, 30000); // every 30s when visible
+}
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && cloudReady()){
+    console.log("[cloud] visibilitychange → visible, pulling + reconnecting realtime");
+    cloudSubscribe();
+    cloudRefresh("visibility");
+  }
+});
+window.addEventListener("focus", () => {
+  if (cloudReady()){
+    console.log("[cloud] window focus → pulling");
+    cloudRefresh("focus");
+  }
+});
+window.addEventListener("online", () => {
+  if (cloudReady()){
+    console.log("[cloud] network online → reconnecting realtime + pulling");
+    cloudSubscribe();
+    cloudRefresh("online");
+  }
+});
+window.addEventListener("pageshow", (e) => {
+  // On iOS Safari, pageshow with persisted=true means we came back from bfcache.
+  if (e.persisted && cloudReady()){
+    console.log("[cloud] pageshow (bfcache) → pulling");
+    cloudSubscribe();
+    cloudRefresh("pageshow");
+  }
+});
+
+/* ----- Auth UI ----- */
+const authOverlay  = document.getElementById("authOverlay");
+const authSignedIn = document.getElementById("authSignedIn");
+const authSignedOut= document.getElementById("authSignedOut");
+
+function showAuthOverlay(){
+  if (cloudUser){
+    authSignedOut.style.display = "none";
+    authSignedIn.style.display  = "block";
+    document.getElementById("authEmailShown").textContent = cloudUser.email || "—";
+    const uInput = document.getElementById("authUsername");
+    if (uInput) uInput.value = (S.profile && S.profile.username) || "";
+  } else {
+    authSignedOut.style.display = "block";
+    authSignedIn.style.display  = "none";
+  }
+  authOverlay.classList.add("on");
+  setTimeout(()=>{
+    if (cloudUser) document.getElementById("authUsername")?.focus();
+    else document.getElementById("authEmail")?.focus();
+  }, 50);
+}
+function hideAuthOverlay(){ authOverlay.classList.remove("on"); }
+
+document.getElementById("cloudBtn").addEventListener("click", () => {
+  if (!cloudConfigured()){
+    toast("облако не настроено");
+    return;
+  }
+  showAuthOverlay();
+});
+
+document.getElementById("authClose")?.addEventListener("click", hideAuthOverlay);
+document.getElementById("authSkip")?.addEventListener("click", hideAuthOverlay);
+authOverlay.addEventListener("click", e => {
+  if (e.target === authOverlay) hideAuthOverlay();
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && authOverlay.classList.contains("on")) hideAuthOverlay();
+});
+
+document.getElementById("authSendLink").addEventListener("click", async () => {
+  const email = (document.getElementById("authEmail").value || "").trim();
+  const msg = document.getElementById("authMsg");
+  msg.classList.remove("error");
+  if (!email || !email.includes("@")){
+    msg.textContent = "введи email";
+    msg.classList.add("on","error");
+    return;
+  }
+  if (!isAllowedEmail(email)){
+    msg.textContent = "этот email не в whitelist'е. напиши автору.";
+    msg.classList.add("on","error");
+    return;
+  }
+  if (!cloudConfigured()){
+    msg.textContent = "облако не настроено";
+    msg.classList.add("on","error");
+    return;
+  }
+  msg.textContent = "отправляю...";
+  msg.classList.remove("error"); msg.classList.add("on");
+  try {
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.href.split("#")[0].split("?")[0] }
+    });
+    if (error) throw error;
+    msg.textContent = "ссылка отправлена. проверь почту (и спам).";
+    msg.classList.remove("error");
+  } catch (e){
+    msg.textContent = "ошибка: " + (e.message || e);
+    msg.classList.add("error");
+  }
+});
+
+document.getElementById("authEmail")?.addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("authSendLink").click();
+});
+
+/* Username — explicit "сохранить" button; pushes through normal save() → cloud. */
+function saveUsernameFromInput(){
+  const inp = document.getElementById("authUsername");
+  if (!inp) return;
+  const v = (inp.value || "").trim().slice(0, 32);
+  S.profile = S.profile || { username: "" };
+  if (S.profile.username === v){
+    toast("ник без изменений");
+    return;
+  }
+  console.log("[save] username:", JSON.stringify(S.profile.username), "→", JSON.stringify(v));
+  S.profile.username = v;
+  save();                                  // bumps _updatedAt + schedules cloud push
+  if (cloudReady()) setCloudStatus("online", displayName());
+  toast(v ? "ник сохранён: " + v : "ник очищен");
+}
+document.getElementById("authUsernameSave")?.addEventListener("click", saveUsernameFromInput);
+document.getElementById("authUsername")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter"){ e.preventDefault(); saveUsernameFromInput(); }
+});
+
+document.getElementById("authSignOut")?.addEventListener("click", async () => {
+  console.log("[auth] sign-out clicked");
+  if (!sb){ console.warn("[auth] no sb client, cannot sign out"); return; }
+  try {
+    const { error } = await sb.auth.signOut();
+    if (error) console.warn("[auth] sb.signOut returned error:", error);
+  } catch (e){
+    console.warn("[auth] sb.signOut threw:", e);
+  }
+  // Always clean up the local UI/state even if the network call failed —
+  // the user's intent was to log out.
+  cloudUser = null;
+  if (cloudChannel){ try { sb.removeChannel(cloudChannel); } catch(_){} cloudChannel = null; }
+  if (cloudPollTimer){ clearInterval(cloudPollTimer); cloudPollTimer = null; }
+  lastSyncStamp = 0;
+  lastPushedUpdatedAt = 0;
+  // Drop any persisted Supabase session tokens so a stale token never
+  // re-authenticates the user after reload.
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--){
+      const k = localStorage.key(i);
+      if (k && k.startsWith("sb-") && (k.endsWith("-auth-token") || k.includes("-auth-token"))){
+        console.log("[auth] removing localStorage key:", k);
+        localStorage.removeItem(k);
+      }
+    }
+  } catch(_){}
+  setCloudStatus("offline", "войти");
+  hideAuthOverlay();
+  toast("вышли");
+});
+
+/* ============================================================
+   PWA — service worker
+   Network-first for HTML, cache-first for static. When a new SW
+   takes over we reload once so the user gets the new shell.
+============================================================ */
+if ("serviceWorker" in navigator && location.protocol !== "file:"){
+  let reloadOnce = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloadOnce) return;
+    reloadOnce = true;
+    console.log("[sw] new controller — reloading");
+    location.reload();
+  });
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js")
+      .then(reg => {
+        // Force update check on every load.
+        try { reg.update(); } catch(_) {}
+        if (reg.waiting) reg.waiting.postMessage("SKIP_WAITING");
+        reg.addEventListener("updatefound", () => {
+          const nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener("statechange", () => {
+            if (nw.state === "installed" && navigator.serviceWorker.controller){
+              // New version available — activate it now.
+              nw.postMessage("SKIP_WAITING");
+            }
+          });
+        });
+      })
+      .catch(e => console.warn("sw register failed:", e));
+  });
+}
+
+/* ============================================================
    INIT
+   Cloud-first boot: when a session token is in localStorage we
+   wait for cloudPull to finish before rendering the UI, so the
+   user never sees a flash of stale local data.
 ============================================================ */
 // reset legacy focusMode flag at start — focus is a transient UI state, not
 // something we want to persist across reloads (avoids stuck overlays).
-S.focusMode = false; save();
+S.focusMode = false;
+localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
 
 setPhase("work", 1);
-renderToday();
-setInterval(renderToday, 60000); // обновлять время в шапке раз в минуту
+
+/* Detect a likely Supabase session synchronously by scanning localStorage
+   for the auth token. If present, gate the UI behind cloudInit so cloud
+   data lands first. Otherwise render immediately from cache. */
+function hasLikelySession(){
+  try {
+    for (let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      if (k && k.startsWith("sb-") && k.endsWith("-auth-token")){
+        return true;
+      }
+    }
+  } catch (_) {}
+  return false;
+}
+
+(async function boot(){
+  const gated = cloudConfigured() && hasLikelySession();
+  if (gated){
+    console.log("[boot] session token detected — waiting for cloud pull before render");
+    document.body.classList.add("cloud-loading");
+    // Race against a hard timeout so a slow network never traps the UI.
+    cloudInit();
+    await Promise.race([
+      cloudLoadingPromise,
+      new Promise(r => setTimeout(r, 1500))
+    ]);
+    document.body.classList.remove("cloud-loading");
+  } else {
+    // No session — local cache is fine to render immediately.
+    setTimeout(cloudInit, 50);
+  }
+  renderToday();
+  setInterval(renderToday, 60000);
+})();
 </script>
 </body>
 </html>
